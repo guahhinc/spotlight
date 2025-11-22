@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Spotlight</title>
     
+    <!-- iOS PWA Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Spotlight">
     <meta name="theme-color" content="#050505">
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/96/search.png">
 
+    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
@@ -17,6 +20,9 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&display=swap');
 
         :root { --bg-color: #050505; --card-bg: #171717; --accent: #a855f7; }
+        
+        /* Mobile Reset */
+        * { -webkit-tap-highlight-color: transparent; outline: none; touch-action: manipulation; }
         
         body { 
             font-family: 'Inter Tight', sans-serif; 
@@ -28,10 +34,12 @@
             padding-bottom: env(safe-area-inset-bottom);
             overscroll-behavior: none; 
             user-select: none; 
+            cursor: text; /* Indicates clickable background */
         }
 
         input, textarea { user-select: text; }
 
+        /* Search Bar Glow */
         .search-container { position: relative; z-index: 10; }
         .search-glow {
             position: absolute; inset: -2px;
@@ -41,6 +49,7 @@
         }
         .search-container:focus-within .search-glow { opacity: 1; filter: blur(25px); }
 
+        /* Inputs */
         .input-wrapper { 
             position: relative; background: var(--card-bg); 
             border-radius: 0.75rem; display: flex; align-items: center; 
@@ -48,6 +57,7 @@
             min-height: 3.5rem; 
         }
         
+        /* Font size 16px+ prevents iOS zoom */
         #mainInput { background: transparent; color: white; z-index: 2; position: relative; font-size: 18px; }
         #mainInput::placeholder { color: #525252; font-weight: 300; opacity: 1; } 
         
@@ -57,14 +67,17 @@
             z-index: 1; padding-left: 3rem; font-size: 18px;
         }
 
+        /* Results List */
         .result-item { border-left: 3px solid transparent; }
         .result-item:active { background-color: #262626; } 
         .result-item.selected { background-color: #262626; border-left: 3px solid var(--accent); }
         
+        /* Scrollbars */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
+        /* Modals */
         .modal-overlay { 
             position: fixed; inset: 0; background: rgba(0,0,0,0.9); 
             backdrop-filter: blur(10px); z-index: 50; 
@@ -72,7 +85,7 @@
             opacity: 0; pointer-events: none; transition: opacity 0.2s; 
             padding: 1rem; padding-bottom: env(safe-area-inset-bottom);
         }
-        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; cursor: default; }
         .modal-content { 
             background: #111; border: 1px solid #333; border-radius: 1.2rem; 
             width: 100%; max-width: 550px; max-height: 85dvh; 
@@ -88,7 +101,7 @@
         }
         .icon-option.selected { background: #3b0764; border-color: #a855f7; color: #fff; }
 
-        /* Sync Indicator - Updated */
+        /* Sync Indicator */
         #syncIndicator {
             position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: 20px;
             background: rgba(38, 38, 38, 0.8); border: 1px solid #333;
@@ -118,12 +131,12 @@
                 <p class="text-neutral-500 text-sm mt-1">Ready.</p>
             </div>
             <div class="flex gap-3 pb-1">
-                <button onclick="notesApp.openNew()" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
+                <button onclick="notesApp.openNew(event)" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
                     <span class="text-xs text-neutral-400 group-hover:text-white font-medium flex items-center gap-2">
                         <i class="fas fa-plus"></i> <span class="hidden sm:inline">Note</span>
                     </span>
                 </button>
-                <button onclick="settingsApp.open()" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
+                <button onclick="settingsApp.open(event)" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
                     <span class="text-xs text-neutral-400 group-hover:text-white font-medium flex items-center gap-2">
                         <i class="fas fa-cog"></i> <span class="hidden sm:inline">Settings</span>
                     </span>
@@ -139,7 +152,16 @@
                 </div>
                 <div class="relative flex-grow h-14">
                     <input type="text" id="ghostInput" disabled>
-                    <input type="text" id="mainInput" class="h-full w-full pl-2 text-lg outline-none font-light bg-transparent" autocomplete="off" spellcheck="false" placeholder="Search...">
+                    <!-- enterkeyhint="go" makes the mobile keyboard button blue/prominent -->
+                    <input 
+                        type="text" 
+                        id="mainInput" 
+                        class="h-full w-full pl-2 text-lg outline-none font-light bg-transparent" 
+                        autocomplete="off" 
+                        spellcheck="false" 
+                        enterkeyhint="go"
+                        placeholder="Search..."
+                    >
                 </div>
                 <div class="pr-3 hidden md:block" id="tabHint">
                     <span class="text-[10px] font-mono bg-neutral-800 text-neutral-400 px-2 py-1 rounded border border-neutral-700 opacity-0 transition-opacity duration-200">TAB</span>
@@ -149,7 +171,10 @@
                 <div id="resultsList" class="max-h-[50dvh] overflow-y-auto results-scroll py-1"></div>
             </div>
         </div>
-        <div class="mt-6 text-neutral-600 text-xs text-center opacity-60">Tap to search</div>
+        
+        <div class="mt-6 text-neutral-600 text-xs text-center opacity-60">
+            Tap anywhere to search
+        </div>
     </div>
 
     <!-- SETTINGS MODAL -->
@@ -238,35 +263,26 @@
             return matrix[b.length][a.length];
         }
 
-        // --- MERGE LOGIC (Smart Conflict Resolution) ---
+        // --- MERGE LOGIC ---
         const Merger = {
             notes: (local, server) => {
                 const map = new Map();
-                // Add server first
                 server.forEach(n => map.set(n.id, n));
-                // Merge local
                 local.forEach(n => {
                     const exists = map.get(n.id);
-                    // If local is newer or exists only locally, keep local
                     if (!exists || (n.updated > exists.updated)) {
                         map.set(n.id, n);
                     }
                 });
-                // Return sorted by updated date desc
                 return Array.from(map.values()).sort((a,b) => b.updated - a.updated);
             },
-            shortcuts: (localMap, serverMap) => {
-                // Simple merge, local preferred if conflict
-                return { ...serverMap, ...localMap }; 
-            },
+            shortcuts: (localMap, serverMap) => { return { ...serverMap, ...localMap }; },
             history: (local, server) => {
                 const map = new Map();
                 server.forEach(h => map.set(h.term, h));
                 local.forEach(h => {
                     const exists = map.get(h.term);
-                    if (!exists || h.count > exists.count) {
-                        map.set(h.term, h);
-                    }
+                    if (!exists || h.count > exists.count) map.set(h.term, h);
                 });
                 return Array.from(map.values());
             }
@@ -281,38 +297,26 @@
                 Syncer.text.innerText = msg;
                 Syncer.text.className = isError ? "text-red-400" : "text-neutral-300";
                 Syncer.indicator.classList.add('visible');
-                // Hide after 2 seconds
                 setTimeout(() => Syncer.indicator.classList.remove('visible'), 2000);
             },
 
-            // The "Two-Step Shuffle": Download -> Merge -> Upload
             executeSmartSync: async (user, pass, silent = false) => {
                 if(silent) Syncer.show("Syncing...");
-
                 try {
-                    // STEP 1: DOWNLOAD
-                    const res = await fetch(API_URL, { 
-                        method: "POST", 
-                        body: JSON.stringify({ action: 'login', username: user, password: pass }) 
-                    });
+                    const res = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: 'login', username: user, password: pass }) });
                     const json = await res.json();
-
                     if (json.status === "success") {
-                        // STEP 2: MERGE
                         if (json.data.notes) brain.notes.list = Merger.notes(brain.notes.list, json.data.notes);
                         if (json.data.shortcuts) brain.shortcuts.custom = Merger.shortcuts(brain.shortcuts.custom, json.data.shortcuts);
                         if (json.data.savedShortcuts) brain.shortcuts.auto = Merger.shortcuts(brain.shortcuts.auto, json.data.savedShortcuts);
                         if (json.data.history) brain.history = Merger.history(brain.history, json.data.history);
 
-                        // Save Merged State Locally
                         brain.notes.saveLocal();
                         brain.shortcuts.saveLocal();
                         brain.saveHistoryLocal();
 
-                        // Refresh UI if needed
                         if(settingsApp.modal.classList.contains('active')) settingsApp.renderList();
 
-                        // STEP 3: UPLOAD MERGED DATA
                         const uploadPayload = {
                             action: 'save',
                             username: user,
@@ -324,9 +328,7 @@
                                 history: brain.history
                             }
                         };
-                        
                         await fetch(API_URL, { method: "POST", body: JSON.stringify(uploadPayload) });
-                        
                         if(!silent) Syncer.show("Up to date!");
                         return true;
                     } else {
@@ -343,21 +345,11 @@
 
         // --- DATA MODULES ---
         class NotesManager {
-            constructor() {
-                this.list = JSON.parse(localStorage.getItem(KEYS.NOTES)) || [];
-            }
+            constructor() { this.list = JSON.parse(localStorage.getItem(KEYS.NOTES)) || []; }
             saveLocal() { localStorage.setItem(KEYS.NOTES, JSON.stringify(this.list)); }
-            save() { this.saveLocal(); } // Sync handled by timer
-            
-            create(title, body) {
-                const id = Date.now().toString();
-                this.list.unshift({ id, title: title || "Untitled", body, updated: Date.now() });
-                this.save();
-            }
-            update(id, title, body) {
-                const idx = this.list.findIndex(n => n.id === id);
-                if (idx !== -1) { this.list[idx] = { ...this.list[idx], title, body, updated: Date.now() }; this.save(); }
-            }
+            save() { this.saveLocal(); }
+            create(title, body) { this.list.unshift({ id: Date.now().toString(), title: title || "Untitled", body, updated: Date.now() }); this.save(); }
+            update(id, title, body) { const idx = this.list.findIndex(n => n.id === id); if (idx !== -1) { this.list[idx] = { ...this.list[idx], title, body, updated: Date.now() }; this.save(); } }
             delete(id) { this.list = this.list.filter(n => n.id !== id); this.save(); }
             get(id) { return this.list.find(n => n.id === id); }
         }
@@ -367,7 +359,7 @@
                 this.defaults = {
                     "youtube": { url: "https://www.youtube.com", icon: "fa-play", name: "YouTube", class: "text-red-500" },
                     "gmail": { url: "https://mail.google.com", icon: "fa-envelope", name: "Gmail", class: "text-red-400" },
-                    "outlook": { url: "https://outlook.live.com", icon: "fa-envelope", name: "Outlook", class: "text-blue-500" },
+                    "outlook": { url: "https://outlook.live.com", icon: "fa-envelope-open-text", name: "Outlook", class: "text-blue-500" },
                     "spotify": { url: "https://open.spotify.com", icon: "fa-music", name: "Spotify", class: "text-green-500" },
                     "applemusic": { url: "https://music.apple.com", icon: "fa-music", name: "Apple Music", class: "text-pink-500" },
                     "maps": { url: "https://maps.google.com", icon: "fa-map-marker-alt", name: "Maps", class: "text-green-500" },
@@ -382,15 +374,8 @@
             saveLocal() { localStorage.setItem(KEYS.SHORTCUTS, JSON.stringify({ custom: this.custom, auto: this.auto })); }
             save() { this.saveLocal(); }
             getAll() { return { ...this.defaults, ...this.auto, ...this.custom }; }
-            add(name, url, icon) {
-                const key = name.toLowerCase().replace(/\s/g, '');
-                this.custom[key] = { name, url, icon: icon || 'fa-link', class: 'text-purple-400' };
-                this.save();
-            }
-            remove(key) {
-                if(this.custom[key]) delete this.custom[key];
-                this.save();
-            }
+            add(name, url, icon) { const key = name.toLowerCase().replace(/\s/g, ''); this.custom[key] = { name, url, icon: icon || 'fa-link', class: 'text-purple-400' }; this.save(); }
+            remove(key) { if(this.custom[key]) delete this.custom[key]; this.save(); }
         }
 
         class Brain {
@@ -463,32 +448,40 @@
         let suggestions = [];
         let selIndex = 0;
 
-        // --- AUTOMATION ---
-        
-        // 1. ON LOAD
+        // --- MOBILE & DESKTOP CLICK-TO-FOCUS ---
+        document.addEventListener('click', (e) => {
+            // If modal is active, ignore body clicks
+            if (document.querySelector('.modal-overlay.active')) return;
+            // If interacting with specific elements, ignore
+            if (e.target.closest('button') || e.target.closest('.result-item') || e.target.closest('input') || e.target.closest('textarea')) return;
+            
+            // Otherwise, focus main input (Makes whole screen a tap target)
+            els.main.focus();
+        });
+
+        // --- KEYBOARD SHORTCUTS ---
+        document.addEventListener('keydown', (e) => {
+            if (document.querySelector('.modal-overlay.active')) return;
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            // If user types a letter, focus input automatically
+            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) els.main.focus();
+        });
+
+        // --- AUTO SYNC LOOP ---
         window.addEventListener('load', () => {
             const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
             if(creds.user && creds.pass) {
-                // Silent Sync on Load
                 Syncer.executeSmartSync(creds.user, creds.pass, true);
-                // Fill settings
                 document.getElementById('syncUser').value = creds.user;
                 document.getElementById('syncPass').value = creds.pass;
             }
         });
 
-        // 2. 20 SECOND LOOP
         setInterval(() => {
             const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
             if (!creds.user || !creds.pass) return;
-
-            const activeTag = document.activeElement.tagName;
-            const isTyping = (activeTag === 'INPUT' || activeTag === 'TEXTAREA');
-
-            // Only sync if user is NOT typing to avoid UI jank
-            if (!isTyping) {
-                Syncer.executeSmartSync(creds.user, creds.pass, true);
-            }
+            const isTyping = (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+            if (!isTyping) Syncer.executeSmartSync(creds.user, creds.pass, true);
         }, 20000); 
 
         document.addEventListener('visibilitychange', () => {
@@ -498,22 +491,10 @@
             }
         });
 
-        // Event Listeners
-        document.addEventListener('keydown', (e) => {
-            if (document.querySelector('.modal-overlay.active')) return;
-            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) els.main.focus();
-        });
-
+        // --- RENDER LOGIC ---
         els.main.addEventListener('input', (e) => render(e.target.value));
         els.main.addEventListener('focus', () => render(els.main.value));
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-container')) {
-                els.box.classList.add('hidden');
-                els.hint.style.opacity = '0';
-            }
-        });
-
+        
         function render(val) {
             suggestions = brain.predict(val);
             els.list.innerHTML = '';
@@ -557,8 +538,11 @@
                 brain.learn(item.term);
                 els.main.value = "Opening...";
                 document.getElementById('mainIcon').className = "fas fa-circle-notch fa-spin text-purple-500";
-                if (item.url) { setTimeout(() => window.location.href = item.url, 300); } 
-                else { setTimeout(() => window.open(`https://www.google.com/search?q=${encodeURIComponent(item.term)}`, '_blank'), 300); setTimeout(() => { els.main.value = ""; document.getElementById('mainIcon').className = "fas fa-search"; }, 1000); }
+                if (item.url) setTimeout(() => window.location.href = item.url, 300);
+                else {
+                    setTimeout(() => window.open(`https://www.google.com/search?q=${encodeURIComponent(item.term)}`, '_blank'), 300);
+                    setTimeout(() => { els.main.value = ""; document.getElementById('mainIcon').className = "fas fa-search"; }, 1000);
+                }
             }
             els.box.classList.add('hidden');
         }
@@ -577,7 +561,7 @@
             title: document.getElementById('noteTitle'),
             body: document.getElementById('noteBody'),
             currId: null,
-            openNew: () => { notesApp.currId = null; notesApp.title.value = ""; notesApp.body.value = ""; notesApp.modal.classList.add('active'); setTimeout(() => notesApp.title.focus(), 100); },
+            openNew: (e) => { if(e) e.stopPropagation(); notesApp.currId = null; notesApp.title.value = ""; notesApp.body.value = ""; notesApp.modal.classList.add('active'); setTimeout(() => notesApp.title.focus(), 100); },
             openExisting: (id) => { const n = brain.notes.get(id); if(n) { notesApp.currId = id; notesApp.title.value = n.title; notesApp.body.value = n.body; notesApp.modal.classList.add('active'); } },
             saveAndClose: () => { if(notesApp.title.value.trim() || notesApp.body.value.trim()) { if(notesApp.currId) brain.notes.update(notesApp.currId, notesApp.title.value, notesApp.body.value); else brain.notes.create(notesApp.title.value, notesApp.body.value); } notesApp.modal.classList.remove('active'); },
             deleteCurrent: () => { if(notesApp.currId) brain.notes.delete(notesApp.currId); notesApp.modal.classList.remove('active'); }
@@ -589,7 +573,7 @@
             grid: document.getElementById('iconGrid'),
             iconInput: document.getElementById('selectedIconInput'),
             icons: ["fa-globe", "fa-star", "fa-rocket", "fa-gamepad", "fa-code", "fa-music", "fa-camera", "fa-shopping-cart", "fa-briefcase", "fa-graduation-cap", "fa-plane", "fa-envelope", "fa-hashtag", "fa-ghost", "fa-bolt", "fa-fire"],
-            open: () => { settingsApp.renderIcons(); settingsApp.renderList(); settingsApp.modal.classList.add('active'); },
+            open: (e) => { if(e) e.stopPropagation(); settingsApp.renderIcons(); settingsApp.renderList(); settingsApp.modal.classList.add('active'); },
             close: () => settingsApp.modal.classList.remove('active'),
             renderIcons: () => { settingsApp.grid.innerHTML = ''; settingsApp.iconInput.value = settingsApp.icons[0]; settingsApp.icons.forEach((icon, i) => { const d = document.createElement('div'); d.className = `icon-option ${i===0?'selected':''}`; d.innerHTML = `<i class="fas ${icon}"></i>`; d.onclick = () => { document.querySelectorAll('.icon-option').forEach(e => e.classList.remove('selected')); d.classList.add('selected'); settingsApp.iconInput.value = icon; }; settingsApp.grid.appendChild(d); }); },
             renderList: () => { settingsApp.list.innerHTML = ''; const custom = brain.shortcuts.custom; for (const [key, val] of Object.entries(custom)) { const d = document.createElement('div'); d.className = 'flex justify-between items-center bg-black border border-neutral-800 p-2 rounded mb-2'; d.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><i class="fas ${val.icon} text-neutral-500"></i><span class="text-sm text-purple-300">${val.name}</span></div><button onclick="settingsApp.remove('${key}')" class="text-neutral-600 hover:text-red-500"><i class="fas fa-times"></i></button>`; settingsApp.list.appendChild(d); } },
@@ -605,8 +589,7 @@
                 if(!u || !p) { status.innerText = "Enter credentials"; return; }
                 status.innerText = "Checking...";
                 localStorage.setItem(KEYS.CREDS, JSON.stringify({user: u, pass: p}));
-                // Manual Force Trigger
-                const success = await Syncer.executeSmartSync(u, p, false); // false = show indicator
+                const success = await Syncer.executeSmartSync(u, p, false);
                 status.innerText = success ? "Success!" : "Failed.";
                 status.className = success ? "text-green-500 text-xs text-center mt-2" : "text-red-500 text-xs text-center mt-2";
             }
