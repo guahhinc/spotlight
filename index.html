@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotlight Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&display=swap');
+
+        body { font-family: 'Inter Tight', sans-serif; background-color: #050505; overflow: hidden; }
+        .search-container { position: relative; z-index: 10; }
+        .search-glow { position: absolute; inset: -3px; background: linear-gradient(45deg, #6366f1, #a855f7, #ec4899); border-radius: 1rem; filter: blur(12px); opacity: 0.6; transition: opacity 0.3s ease, filter 0.3s ease; z-index: -1; }
+        .search-container:focus-within .search-glow { opacity: 1; filter: blur(20px); }
+        .input-wrapper { position: relative; background: #171717; border-radius: 0.75rem; display: flex; align-items: center; transition: all 0.2s; }
+        #mainInput { background: transparent; color: white; z-index: 2; position: relative; }
+        #mainInput::placeholder { color: #525252; font-weight: 300; }
+        #ghostInput { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: transparent; color: #525252; pointer-events: none; z-index: 1; padding-left: 3rem; }
+        .result-item { border-left: 3px solid transparent; }
+        .result-item.selected { background-color: #262626; border-left: 3px solid #a855f7; }
+        .results-scroll::-webkit-scrollbar { width: 6px; }
+        .results-scroll::-webkit-scrollbar-track { background: #171717; }
+        .results-scroll::-webkit-scrollbar-thumb { background: #404040; border-radius: 3px; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 50; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { background: #171717; border: 1px solid #333; border-radius: 1rem; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.2s; }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        #noteBody { font-family: 'Inter Tight', sans-serif; }
+        .icon-option { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: #262626; border-radius: 8px; cursor: pointer; color: #737373; border: 2px solid transparent; transition: all 0.2s; }
+        .icon-option:hover { background: #404040; color: white; }
+        .icon-option.selected { background: #3b0764; border-color: #a855f7; color: #e879f9; }
+        .fade-in-up { animation: fadeInUp 0.2s ease-out forwards; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .fa-spinner { animation: spin 1s linear infinite; }
+        
+        /* Custom Scrollbar for Modal */
+        .modal-content::-webkit-scrollbar { width: 6px; }
+        .modal-content::-webkit-scrollbar-track { background: #171717; }
+        .modal-content::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-start pt-32 text-slate-200">
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 bg-[#050505]"></div>
+
+    <div class="w-full max-w-lg px-4">
+        <div class="flex justify-between items-end mb-6 px-2">
+            <div>
+                <h1 class="text-4xl font-bold text-white tracking-tight">Spotlight</h1>
+                <p class="text-neutral-500 text-sm mt-1" id="statusText">Ready.</p>
+            </div>
+            <div class="flex gap-4 pb-1">
+                <button onclick="notesApp.openNew()" class="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors text-sm font-medium group">
+                    <div class="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center group-hover:bg-neutral-700 transition-colors">
+                        <i class="fas fa-plus text-xs"></i>
+                    </div>
+                    New Note
+                </button>
+                <button onclick="settingsApp.open()" class="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors text-sm font-medium group">
+                    <div class="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center group-hover:bg-neutral-700 transition-colors">
+                        <i class="fas fa-cog text-xs"></i>
+                    </div>
+                    Settings
+                </button>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <div class="search-glow"></div>
+            <div class="input-wrapper shadow-2xl border border-neutral-800 p-1" id="searchWrapper">
+                <div class="pl-4 pr-2 text-neutral-500" id="iconContainer">
+                    <i class="fas fa-search" id="mainIcon"></i>
+                </div>
+                <div class="relative flex-grow h-14">
+                    <input type="text" id="ghostInput" class="h-full w-full pl-2 text-xl font-light" disabled>
+                    <input type="text" id="mainInput" class="h-full w-full pl-2 text-xl outline-none font-light" autocomplete="off" spellcheck="false" autofocus placeholder="Search, 'Settings', or 'Note'">
+                </div>
+                <div class="pr-3 hidden" id="tabHint">
+                    <span class="text-[10px] font-mono bg-neutral-800 text-neutral-400 px-2 py-1 rounded border border-neutral-700">TAB</span>
+                </div>
+            </div>
+            <div id="predictionsBox" class="absolute top-full left-0 right-0 mt-4 bg-neutral-900/95 backdrop-blur-md border border-neutral-800 rounded-xl shadow-2xl overflow-hidden hidden">
+                <div id="resultsList" class="max-h-80 overflow-y-auto results-scroll py-2"></div>
+            </div>
+        </div>
+        <div class="mt-8 text-neutral-600 text-xs text-center">
+            <span class="font-bold text-neutral-400">↑ ↓</span> to navigate, <span class="font-bold text-neutral-400">ENTER</span> to select
+        </div>
+    </div>
+
+    <!-- COMBINED SETTINGS MODAL -->
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-content p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white"><i class="fas fa-cog mr-2 text-purple-500"></i>Settings</h2>
+                <button onclick="settingsApp.close()" class="text-neutral-500 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <!-- Custom Shortcuts -->
+            <div class="mb-8 border-b border-neutral-800 pb-6">
+                <h3 class="text-sm font-semibold text-neutral-400 uppercase mb-3">Custom Shortcuts</h3>
+                <div class="flex gap-2 mb-3">
+                    <input id="newShortName" placeholder="Name (e.g. Apple Music)" class="bg-neutral-800 border border-neutral-700 text-white px-3 py-2 rounded w-1/2 outline-none focus:border-purple-500 text-sm transition-colors">
+                    <input id="newShortUrl" placeholder="URL" class="bg-neutral-800 border border-neutral-700 text-white px-3 py-2 rounded w-1/2 outline-none focus:border-purple-500 text-sm transition-colors">
+                </div>
+                <div class="mb-4">
+                    <label class="text-xs text-neutral-500 mb-2 block">Choose an Icon:</label>
+                    <div id="iconGrid" class="grid grid-cols-8 gap-2"></div>
+                    <input type="hidden" id="selectedIconInput">
+                </div>
+                <button onclick="settingsApp.addShortcut()" class="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded transition-colors text-sm font-medium mb-4">Add Shortcut</button>
+                <div id="shortcutsList" class="max-h-32 overflow-y-auto border border-neutral-800 rounded bg-neutral-900/50 p-2 space-y-1"></div>
+            </div>
+            
+            <!-- Auto Saved Section -->
+             <div class="mb-8 border-b border-neutral-800 pb-6">
+                <h3 class="text-sm font-semibold text-neutral-400 uppercase mb-3">Auto-Saved Shortcuts</h3>
+                 <p class="text-xs text-neutral-500 mb-2">Sites you visit frequently (>3 times) appear here automatically.</p>
+                <div id="autoShortcutsList" class="max-h-24 overflow-y-auto border border-neutral-800 rounded bg-neutral-900/30 p-2 space-y-1"></div>
+            </div>
+
+            <!-- Cloud Sync Section (Integrated) -->
+            <div class="mb-8 border-b border-neutral-800 pb-6">
+                <h3 class="text-sm font-semibold text-neutral-400 uppercase mb-2">Cloud Account</h3>
+                <p class="text-xs text-neutral-500 mb-3">Optional: Sign in to sync your data across devices.</p>
+                <div class="space-y-3 mb-3">
+                    <input id="syncUser" type="text" placeholder="Username" class="w-full bg-neutral-800 border border-neutral-700 text-white px-3 py-2 rounded outline-none focus:border-blue-500 text-sm">
+                    <input id="syncPass" type="password" placeholder="Password" class="w-full bg-neutral-800 border border-neutral-700 text-white px-3 py-2 rounded outline-none focus:border-blue-500 text-sm">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="syncApp.performSync('login')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-sm font-medium">
+                        <i class="fas fa-download mr-1"></i> Login / Load
+                    </button>
+                    <button onclick="syncApp.performSync('save')" class="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded text-sm font-medium">
+                        <i class="fas fa-upload mr-1"></i> Save to Cloud
+                    </button>
+                </div>
+                <div id="syncStatus" class="mt-2 text-xs text-center text-neutral-500 h-4"></div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div>
+                <h3 class="text-sm font-semibold text-red-400 uppercase mb-3">Danger Zone</h3>
+                <button onclick="brain.reset(); settingsApp.close()" class="w-full border border-red-900/50 text-red-400 hover:bg-red-900/20 py-2 rounded transition-colors text-sm">
+                    Reset All Local Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTES MODAL -->
+    <div id="notesModal" class="modal-overlay">
+        <div class="modal-content p-0 shadow-2xl overflow-hidden flex flex-col h-[500px]">
+            <div class="p-4 border-b border-neutral-800 bg-neutral-900 flex justify-between items-center">
+                <input id="noteTitle" type="text" placeholder="Note Title..." class="bg-transparent text-white font-bold text-lg outline-none w-full placeholder-neutral-600">
+                <div class="flex gap-3 ml-4">
+                    <button onclick="notesApp.deleteCurrent()" class="text-red-500 hover:text-red-400 text-sm" title="Delete"><i class="fas fa-trash"></i></button>
+                    <button onclick="notesApp.saveAndClose()" class="text-purple-500 hover:text-purple-400 font-medium text-sm">Done</button>
+                </div>
+            </div>
+            <textarea id="noteBody" class="flex-grow bg-[#121212] text-neutral-300 p-4 outline-none resize-none text-sm leading-relaxed" placeholder="Type your thoughts..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        // *** PASTE YOUR GOOGLE APPS SCRIPT URL HERE ***
+        const API_URL = "https://script.google.com/macros/s/AKfycbyIm8r81-pzMIZqWJv-X_Mykee7dapXYxATnCP_cuVuzZapRx0bU7mI4lU7KpvBYgcm/exec"; 
+
+        // --- UTILS ---
+        function levenshtein(a, b) {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+            for (let j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) == a.charAt(j - 1)) matrix[i][j] = matrix[i - 1][j - 1];
+                    else matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        // --- DATA MANAGERS ---
+        class NotesManager {
+            constructor() {
+                this.key = 'spotlight_notes_v1';
+                this.notes = JSON.parse(localStorage.getItem(this.key)) || [];
+            }
+            save() { localStorage.setItem(this.key, JSON.stringify(this.notes)); }
+            create(title, body) {
+                const id = Date.now().toString();
+                this.notes.unshift({ id, title: title || "Untitled", body, updated: Date.now() });
+                this.save();
+                return id;
+            }
+            update(id, title, body) {
+                const index = this.notes.findIndex(n => n.id === id);
+                if (index !== -1) { this.notes[index] = { ...this.notes[index], title, body, updated: Date.now() }; this.save(); }
+            }
+            delete(id) { this.notes = this.notes.filter(n => n.id !== id); this.save(); }
+            search(query) {
+                if (!query) return [];
+                const q = query.toLowerCase();
+                return this.notes.filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q));
+            }
+            get(id) { return this.notes.find(n => n.id === id); }
+        }
+
+        class ShortcutManager {
+            constructor() {
+                this.key = 'spotlight_shortcuts_v8';
+                this.defaults = {
+                    "youtube": { url: "https://www.youtube.com", icon: "fa-play", name: "YouTube", class: "text-red-500" },
+                    "gmail": { url: "https://mail.google.com", icon: "fa-envelope", name: "Gmail", class: "text-red-400" },
+                    "outlook": { url: "https://outlook.live.com", icon: "fa-envelope-open-text", name: "Outlook", class: "text-blue-500" },
+                    "spotify": { url: "https://open.spotify.com", icon: "fa-music", name: "Spotify", class: "text-green-500" },
+                    "applemusic": { url: "https://music.apple.com", icon: "fa-music", name: "Apple Music", class: "text-pink-500" },
+                    "googlemaps": { url: "https://maps.google.com", icon: "fa-map-marker-alt", name: "Google Maps", class: "text-green-500" },
+                    "gemini": { url: "https://gemini.google.com/app", icon: "fa-star", name: "Gemini", class: "text-blue-400" },
+                    "kangaroo": { url: "https://guahhinc.github.io/kangaroo/", icon: "fa-paw", name: "Kangaroo", class: "text-orange-500" },
+                    "instagram": { url: "https://www.instagram.com", icon: "fa-camera", name: "Instagram", class: "text-pink-500" },
+                    "tiktok": { url: "https://www.tiktok.com", icon: "fa-music", name: "TikTok", class: "text-cyan-400" },
+                    "docs": { url: "https://docs.google.com", icon: "fa-file-alt", name: "Google Docs", class: "text-blue-500" },
+                    "reddit": { url: "https://www.reddit.com", icon: "fa-robot", name: "Reddit", class: "text-orange-500" },
+                    "chatgpt": { url: "https://chat.openai.com", icon: "fa-bolt", name: "ChatGPT", class: "text-teal-400" },
+                    "github": { url: "https://github.com", icon: "fa-code-branch", name: "GitHub", class: "text-white" },
+                    "amazon": { url: "https://www.amazon.com", icon: "fa-shopping-cart", name: "Amazon", class: "text-yellow-500" }
+                };
+                const saved = JSON.parse(localStorage.getItem(this.key)) || { custom: {}, auto: {} };
+                this.custom = saved.custom || {};
+                this.auto = saved.auto || {};
+            }
+            save() { localStorage.setItem(this.key, JSON.stringify({ custom: this.custom, auto: this.auto })); }
+            getAll() { return { ...this.defaults, ...this.auto, ...this.custom }; }
+            add(name, url, icon) {
+                const lookupKey = name.toLowerCase().replace(/\s/g, '');
+                this.custom[lookupKey] = { url: url, icon: icon || 'fa-link', name: name, class: 'text-purple-400' };
+                this.save();
+            }
+            remove(key) { 
+                if(this.custom[key]) delete this.custom[key];
+                if(this.auto[key]) delete this.auto[key];
+                this.save(); 
+            }
+        }
+
+        class SearchBrain {
+            constructor() {
+                this.storageKey = 'spotlight_history_v12';
+                this.shortcuts = new ShortcutManager();
+                this.data = this.loadData();
+                this.notes = new NotesManager();
+                this.seedDataIfEmpty();
+            }
+            loadData() { return JSON.parse(localStorage.getItem(this.storageKey)) || []; }
+            saveData() { localStorage.setItem(this.storageKey, JSON.stringify(this.data)); }
+            seedDataIfEmpty() {
+                if (this.data.length === 0) {
+                    const now = new Date().getTime();
+                    this.data = [
+                        { term: "YouTube", count: 50, lastAccess: now, context: "evening" },
+                    ];
+                    this.saveData();
+                }
+            }
+            predict(input = "") {
+                const now = new Date();
+                const currentHour = now.getHours();
+                let timeContext = currentHour < 12 ? "morning" : (currentHour < 17 ? "work" : "evening");
+                const q = input.toLowerCase();
+                let results = [];
+                let seen = new Set();
+                if(!q) return [];
+                const addResult = (type, item, scoreBase, extra = {}) => {
+                    if(seen.has(item.term.toLowerCase())) return;
+                    results.push({ type, term: item.term, score: scoreBase, ...extra });
+                    seen.add(item.term.toLowerCase());
+                };
+
+                // 0. CHECK FOR SYSTEM COMMANDS
+                if("settings".startsWith(q) || "config".startsWith(q)) {
+                    addResult('action', {term: "Open Settings"}, 2000, {act: 'settings', icon: 'fa-cog', iconClass: 'text-neutral-400'});
+                }
+                if("new note".startsWith(q) || "note".startsWith(q)) {
+                    addResult('action', {term: "Create New Note"}, 2000, {act: 'note', icon: 'fa-plus', iconClass: 'text-neutral-400'});
+                }
+
+                // 1. Notes
+                this.notes.notes.forEach(note => {
+                    if (note.title.toLowerCase().includes(q)) addResult('note', {term: note.title}, 1000, {id: note.id});
+                });
+                // 2. Shortcuts
+                const allShortcuts = this.shortcuts.getAll();
+                for (const [key, val] of Object.entries(allShortcuts)) {
+                    const nameLower = val.name.toLowerCase();
+                    const nameWords = nameLower.split(' ');
+                    let matchType = null;
+                    if (nameLower.startsWith(q)) matchType = 'exact';
+                    else if (nameWords.some(w => w.startsWith(q))) matchType = 'word';
+                    else if (levenshtein(q, nameLower) <= 1 && q.length > 2) matchType = 'fuzzy';
+                    if (matchType) {
+                        let score = 900;
+                        if (matchType === 'word') score = 850;
+                        if (matchType === 'fuzzy') score = 700;
+                        if(this.shortcuts.auto[key]) score -= 50; 
+                        addResult('shortcut', {term: val.name}, score, { url: val.url, icon: val.icon, iconClass: val.class });
+                    }
+                }
+                // 3. History
+                this.data.forEach(item => {
+                    const itemLower = item.term.toLowerCase();
+                    let score = item.count;
+                    const hoursSince = (now.getTime() - item.lastAccess) / 36e5;
+                    if (hoursSince < 1) score += 5;
+                    if (item.context === timeContext) score += 3;
+                    if(itemLower.startsWith(q) || levenshtein(q, itemLower) <= 1 && q.length > 2) {
+                        let icon = 'fa-search';
+                        let iconClass = 'text-neutral-500';
+                        let lookup = Object.values(allShortcuts).find(s => s.name.toLowerCase() === itemLower);
+                        if(lookup) { icon = lookup.icon; iconClass = lookup.class; }
+                        addResult('history', item, score, { icon, iconClass });
+                    }
+                });
+                return results.sort((a, b) => b.score - a.score);
+            }
+            learn(term) {
+                const allShortcuts = this.shortcuts.getAll();
+                let lookup = Object.values(allShortcuts).find(s => s.name.toLowerCase() === term.toLowerCase());
+                const properTerm = lookup ? lookup.name : term;
+                const existing = this.data.find(i => i.term.toLowerCase() === properTerm.toLowerCase());
+                const now = Date.now();
+                const hour = new Date().getHours();
+                let context = hour < 12 ? "morning" : (hour < 17 ? "work" : "evening");
+                if (existing) { existing.count++; existing.lastAccess = now; existing.context = context; existing.term = properTerm; } 
+                else { this.data.push({ term: properTerm, count: 1, lastAccess: now, context }); }
+                this.saveData();
+            }
+            reset() { localStorage.removeItem(this.storageKey); this.data = []; this.seedDataIfEmpty(); }
+        }
+
+        const brain = new SearchBrain();
+        const mainInput = document.getElementById('mainInput');
+        const ghostInput = document.getElementById('ghostInput');
+        const predictionsBox = document.getElementById('predictionsBox');
+        const resultsList = document.getElementById('resultsList');
+        const tabHint = document.getElementById('tabHint');
+        const mainIcon = document.getElementById('mainIcon');
+        const statusText = document.getElementById('statusText');
+        let currentSuggestions = [];
+        let selectedIndex = 0; 
+        const h = new Date().getHours();
+        statusText.innerText = h < 12 ? "Good morning." : (h < 17 ? "Focus mode." : "Good evening.");
+
+        // AUTO FOCUS
+        document.addEventListener('keydown', (e) => {
+            if (document.querySelector('.modal-overlay.active')) return;
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.key.length === 1) mainInput.focus();
+        });
+
+        function renderSuggestions(val) {
+            currentSuggestions = brain.predict(val);
+            resultsList.innerHTML = '';
+            selectedIndex = 0;
+            if (currentSuggestions.length > 0) {
+                predictionsBox.classList.remove('hidden');
+                const topItem = currentSuggestions[0];
+                if (val && topItem.term.toLowerCase().startsWith(val.toLowerCase())) {
+                    ghostInput.value = val + topItem.term.substring(val.length);
+                    tabHint.classList.remove('hidden');
+                    mainInput.setAttribute('placeholder', '');
+                } else {
+                    ghostInput.value = "";
+                    tabHint.classList.add('hidden');
+                    mainInput.setAttribute('placeholder', '');
+                }
+                currentSuggestions.slice(0, 6).forEach((p, index) => {
+                    const div = document.createElement('div');
+                    div.className = `result-item p-3 mx-2 rounded-md hover:bg-[#262626] cursor-pointer flex items-center justify-between transition-colors fade-in-up ${index === 0 ? 'selected' : ''}`;
+                    div.style.animationDelay = `${index * 30}ms`;
+                    
+                    let icon = p.icon || 'fa-search';
+                    let colorClass = p.iconClass || 'text-neutral-500';
+                    if (p.type === 'note') { icon = 'fa-sticky-note'; colorClass = 'text-yellow-500'; }
+                    
+                    // Action Item styling
+                    if (p.type === 'action') { div.classList.add('border', 'border-neutral-700'); }
+
+                    div.innerHTML = `<div class="flex items-center text-neutral-300"><div class="w-8 flex justify-center mr-2 ${colorClass}"><i class="fas ${icon}"></i></div><span class="font-medium">${p.term}</span></div>${p.type === 'note' ? '<span class="text-[10px] bg-yellow-900/30 text-yellow-500 px-2 py-0.5 rounded uppercase">Note</span>' : ''}${p.type === 'action' ? '<span class="text-[10px] bg-neutral-700 text-white px-2 py-0.5 rounded uppercase">Command</span>' : ''}`;
+                    div.onclick = () => executeItem(p);
+                    resultsList.appendChild(div);
+                });
+            } else {
+                predictionsBox.classList.add('hidden');
+                ghostInput.value = "";
+                tabHint.classList.add('hidden');
+                mainInput.setAttribute('placeholder', 'Search, \'Settings\', or \'Note\'');
+            }
+        }
+        
+        function updateSelection() {
+            const items = resultsList.children;
+            for (let i = 0; i < items.length; i++) {
+                if (i === selectedIndex) { items[i].classList.add('selected'); items[i].scrollIntoView({ block: "nearest" }); } 
+                else { items[i].classList.remove('selected'); }
+            }
+        }
+
+        function executeItem(item) {
+            if (item.type === 'action') {
+                if(item.act === 'settings') settingsApp.open();
+                if(item.act === 'note') notesApp.openNew();
+                resetUI();
+                return;
+            }
+            if (item.type === 'note') { notesApp.openExisting(item.id); return; }
+            if(item.url) handleActionUrl(item.url, item.term);
+            else handleAction(item.term);
+        }
+
+        function handleActionUrl(url, term) {
+            mainIcon.className = "fas fa-spinner text-purple-500";
+            ghostInput.value = "";
+            mainInput.value = "Opening...";
+            brain.learn(term);
+            setTimeout(() => window.location.href = url, 400);
+        }
+
+        function handleAction(query) {
+            if (!query) return;
+            
+            // Check for direct commands regardless of prediction click
+            if(query.toLowerCase() === 'settings' || query.toLowerCase() === 'config') { settingsApp.open(); resetUI(); return; }
+            if(query.toLowerCase() === 'new note' || query.toLowerCase() === 'note') { notesApp.openNew(); resetUI(); return; }
+
+            mainIcon.className = "fas fa-spinner text-purple-500";
+            ghostInput.value = "";
+            const q = query.toLowerCase().trim();
+            const allShortcuts = brain.shortcuts.getAll();
+            const shortcutMatch = Object.values(allShortcuts).find(s => s.name.toLowerCase() === q);
+            if (shortcutMatch) {
+                mainInput.value = "Opening...";
+                brain.learn(shortcutMatch.name);
+                setTimeout(() => window.location.href = shortcutMatch.url, 400);
+            } else if (q.includes('.') && !q.includes(' ')) {
+                mainInput.value = "Opening URL...";
+                let url = q.startsWith('http') ? q : 'https://' + q;
+                brain.learn(query);
+                setTimeout(() => window.location.href = url, 400);
+            } else {
+                mainInput.value = "Searching...";
+                brain.learn(query);
+                setTimeout(() => { window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank'); resetUI(); }, 400);
+            }
+        }
+
+        function resetUI() {
+            mainIcon.className = "fas fa-search";
+            mainInput.value = "";
+            mainInput.focus();
+            predictionsBox.classList.add('hidden');
+            ghostInput.value = "";
+            mainInput.setAttribute('placeholder', 'Search, \'Settings\', or \'Note\'');
+        }
+
+        mainInput.addEventListener('input', (e) => renderSuggestions(e.target.value));
+        mainInput.addEventListener('focus', () => renderSuggestions(mainInput.value));
+        mainInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab' && !predictionsBox.classList.contains('hidden')) {
+                e.preventDefault();
+                if (currentSuggestions[0]) { mainInput.value = currentSuggestions[0].term; renderSuggestions(mainInput.value); }
+            }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); if (currentSuggestions.length > 0) { selectedIndex = (selectedIndex + 1) % currentSuggestions.length; updateSelection(); } }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); if (currentSuggestions.length > 0) { selectedIndex = (selectedIndex - 1 + currentSuggestions.length) % currentSuggestions.length; updateSelection(); } }
+            else if (e.key === 'Enter') {
+                const val = mainInput.value.trim();
+                if (currentSuggestions.length > 0 && !predictionsBox.classList.contains('hidden')) { executeItem(currentSuggestions[selectedIndex]); } 
+                else if (val) { handleAction(val); }
+            }
+        });
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) { predictionsBox.classList.add('hidden'); tabHint.classList.add('hidden'); ghostInput.value = ""; mainInput.setAttribute('placeholder', 'Search, \'Settings\', or \'Note\''); }
+        });
+
+        const availableIcons = [ "fa-globe", "fa-star", "fa-rocket", "fa-gamepad", "fa-code", "fa-music", "fa-camera", "fa-shopping-cart", "fa-briefcase", "fa-graduation-cap", "fa-plane", "fa-envelope", "fa-hashtag", "fa-ghost", "fa-bolt", "fa-cloud", "fa-map-marker-alt", "fa-fire", "fa-heart", "fa-wrench", "fa-video", "fa-envelope-open-text" ];
+        
+        // MERGED SYNC AND SETTINGS LOGIC
+        const syncApp = {
+            userIn: document.getElementById('syncUser'),
+            passIn: document.getElementById('syncPass'),
+            status: document.getElementById('syncStatus'),
+            
+            // This just does the logic, no modal opening
+            performSync: async (action) => {
+                const user = syncApp.userIn.value.trim();
+                const pass = syncApp.passIn.value.trim();
+
+                if(!user || !pass) {
+                    syncApp.status.innerText = "Please enter username and password.";
+                    return;
+                }
+
+                syncApp.status.innerText = action === 'login' ? "Syncing from cloud..." : "Separating data & Saving...";
+                
+                const payload = {
+                    action: action,
+                    username: user,
+                    password: pass,
+                    data: {
+                        notes: brain.notes.notes,
+                        shortcuts: brain.shortcuts.custom,
+                        savedShortcuts: brain.shortcuts.auto,
+                        history: brain.data
+                    }
+                };
+
+                try {
+                    const res = await fetch(API_URL, {
+                        method: "POST",
+                        body: JSON.stringify(payload)
+                    });
+                    const json = await res.json();
+
+                    if(json.status === "success") {
+                        localStorage.setItem('spotlight_creds', JSON.stringify({user, pass}));
+
+                        if(action === 'login') {
+                            if(json.data.notes) { brain.notes.notes = json.data.notes; brain.notes.save(); }
+                            if(json.data.shortcuts) { brain.shortcuts.custom = json.data.shortcuts; }
+                            if(json.data.savedShortcuts) { brain.shortcuts.auto = json.data.savedShortcuts; }
+                            brain.shortcuts.save(); 
+                            if(json.data.history) { brain.data = json.data.history; brain.saveData(); }
+                            
+                            syncApp.status.innerText = "Data Synced Successfully!";
+                            // Refresh list in settings immediately
+                            settingsApp.renderList();
+                            settingsApp.renderAutoList();
+                        } else {
+                             syncApp.status.innerText = "Data Saved & Organized!";
+                        }
+                    } else {
+                        syncApp.status.innerText = "Error: " + json.message;
+                    }
+                } catch(e) {
+                    console.error(e);
+                    syncApp.status.innerText = "Connection Error.";
+                }
+            }
+        };
+
+        const settingsApp = {
+            modal: document.getElementById('settingsModal'),
+            list: document.getElementById('shortcutsList'),
+            autoList: document.getElementById('autoShortcutsList'),
+            iconGrid: document.getElementById('iconGrid'),
+            selectedIconInput: document.getElementById('selectedIconInput'),
+            open: () => { 
+                settingsApp.renderList(); 
+                settingsApp.renderAutoList(); 
+                settingsApp.renderIconGrid(); 
+                
+                // Pre-fill sync data
+                const creds = JSON.parse(localStorage.getItem('spotlight_creds') || '{}');
+                if(creds.user) document.getElementById('syncUser').value = creds.user;
+                if(creds.pass) document.getElementById('syncPass').value = creds.pass;
+                document.getElementById('syncStatus').innerText = "";
+
+                settingsApp.modal.classList.add('active'); 
+            },
+            close: () => settingsApp.modal.classList.remove('active'),
+            renderIconGrid: () => {
+                settingsApp.iconGrid.innerHTML = '';
+                settingsApp.selectedIconInput.value = availableIcons[0]; 
+                availableIcons.forEach((icon, index) => {
+                    const div = document.createElement('div');
+                    div.className = `icon-option ${index === 0 ? 'selected' : ''}`;
+                    div.innerHTML = `<i class="fas ${icon}"></i>`;
+                    div.onclick = () => { document.querySelectorAll('.icon-option').forEach(el => el.classList.remove('selected')); div.classList.add('selected'); settingsApp.selectedIconInput.value = icon; };
+                    settingsApp.iconGrid.appendChild(div);
+                });
+            },
+            renderList: () => {
+                const custom = brain.shortcuts.custom;
+                settingsApp.list.innerHTML = '';
+                if(Object.keys(custom).length === 0) { settingsApp.list.innerHTML = '<div class="text-xs text-neutral-500 text-center py-2">No custom shortcuts yet.</div>'; return; }
+                for(const [key, val] of Object.entries(custom)) {
+                    const div = document.createElement('div');
+                    div.className = 'flex justify-between items-center bg-black/30 px-2 py-1 rounded';
+                    div.innerHTML = `<div class="flex items-center gap-2 overflow-hidden"><i class="fas ${val.icon} text-neutral-400 text-xs"></i><span class="text-sm text-purple-300 font-medium">${val.name}</span><span class="text-xs text-neutral-600 truncate">${val.url}</span></div><button onclick="settingsApp.remove('${key}')" class="text-neutral-600 hover:text-red-400"><i class="fas fa-times"></i></button>`;
+                    settingsApp.list.appendChild(div);
+                }
+            },
+            renderAutoList: () => {
+                const auto = brain.shortcuts.auto;
+                settingsApp.autoList.innerHTML = '';
+                if(Object.keys(auto).length === 0) { settingsApp.autoList.innerHTML = '<div class="text-xs text-neutral-500 text-center py-2">No auto-saved shortcuts yet.</div>'; return; }
+                for(const [key, val] of Object.entries(auto)) {
+                    const div = document.createElement('div');
+                    div.className = 'flex justify-between items-center bg-black/30 px-2 py-1 rounded';
+                    div.innerHTML = `<div class="flex items-center gap-2 overflow-hidden"><i class="fas fa-bookmark text-yellow-600 text-xs"></i><span class="text-sm text-yellow-500 font-medium">${val.name}</span><span class="text-xs text-neutral-600 truncate">${val.url}</span></div>`;
+                    settingsApp.autoList.appendChild(div);
+                }
+            },
+            addShortcut: () => {
+                const name = document.getElementById('newShortName').value.trim();
+                const url = document.getElementById('newShortUrl').value.trim();
+                const icon = settingsApp.selectedIconInput.value;
+                if(name && url) { brain.shortcuts.add(name, url, icon); document.getElementById('newShortName').value = ''; document.getElementById('newShortUrl').value = ''; settingsApp.renderList(); }
+            },
+            remove: (key) => { brain.shortcuts.remove(key); settingsApp.renderList(); }
+        };
+
+        const notesApp = {
+            modal: document.getElementById('notesModal'),
+            titleInput: document.getElementById('noteTitle'),
+            bodyInput: document.getElementById('noteBody'),
+            currentId: null,
+            openNew: () => { notesApp.currentId = null; notesApp.titleInput.value = ""; notesApp.bodyInput.value = ""; notesApp.modal.classList.add('active'); resetUI(); setTimeout(() => notesApp.titleInput.focus(), 100); },
+            openExisting: (id) => { const note = brain.notes.get(id); if (note) { notesApp.currentId = id; notesApp.titleInput.value = note.title; notesApp.bodyInput.value = note.body; notesApp.modal.classList.add('active'); resetUI(); } },
+            saveAndClose: () => { const title = notesApp.titleInput.value.trim(); const body = notesApp.bodyInput.value.trim(); if (title || body) { if (notesApp.currentId) brain.notes.update(notesApp.currentId, title, body); else brain.notes.create(title, body); } notesApp.modal.classList.remove('active'); },
+            deleteCurrent: () => { if (notesApp.currentId) brain.notes.delete(notesApp.currentId); notesApp.modal.classList.remove('active'); }
+        };
+    </script>
+</body>
+</html>
