@@ -21,7 +21,7 @@
 
         :root { --bg-color: #050505; --card-bg: #171717; --accent: #a855f7; }
         
-        /* Mobile Reset */
+        /* RESET: Removed user-select:none to fix iOS Keyboard issues */
         * { -webkit-tap-highlight-color: transparent; outline: none; touch-action: manipulation; }
         
         body { 
@@ -33,11 +33,14 @@
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
             overscroll-behavior: none; 
-            user-select: none; 
-            cursor: text; /* Indicates clickable background */
+            cursor: text; /* Implies clickable */
         }
 
-        input, textarea { user-select: text; }
+        /* Ensure inputs are interaction-ready */
+        input, textarea { 
+            user-select: text; 
+            -webkit-user-select: text; 
+        }
 
         /* Search Bar Glow */
         .search-container { position: relative; z-index: 10; }
@@ -57,7 +60,6 @@
             min-height: 3.5rem; 
         }
         
-        /* Font size 16px+ prevents iOS zoom */
         #mainInput { background: transparent; color: white; z-index: 2; position: relative; font-size: 18px; }
         #mainInput::placeholder { color: #525252; font-weight: 300; opacity: 1; } 
         
@@ -117,7 +119,8 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="flex flex-col items-center justify-start pt-24 md:pt-32">
+<!-- Added onclick="" to fix iOS tap delegation -->
+<body class="flex flex-col items-center justify-start pt-24 md:pt-32" onclick="">
 
     <div id="syncIndicator">
         <i class="fas fa-circle-notch fa-spin text-purple-500"></i>
@@ -131,12 +134,13 @@
                 <p class="text-neutral-500 text-sm mt-1">Ready.</p>
             </div>
             <div class="flex gap-3 pb-1">
-                <button onclick="notesApp.openNew(event)" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
+                <!-- Added e.stopPropagation() to prevent body click handler from interfering -->
+                <button onclick="event.stopPropagation(); notesApp.openNew()" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
                     <span class="text-xs text-neutral-400 group-hover:text-white font-medium flex items-center gap-2">
                         <i class="fas fa-plus"></i> <span class="hidden sm:inline">Note</span>
                     </span>
                 </button>
-                <button onclick="settingsApp.open(event)" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
+                <button onclick="event.stopPropagation(); settingsApp.open()" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
                     <span class="text-xs text-neutral-400 group-hover:text-white font-medium flex items-center gap-2">
                         <i class="fas fa-cog"></i> <span class="hidden sm:inline">Settings</span>
                     </span>
@@ -146,13 +150,13 @@
 
         <div class="search-container">
             <div class="search-glow"></div>
-            <div class="input-wrapper shadow-2xl">
+            <div class="input-wrapper shadow-2xl" id="wrapperClickTarget">
                 <div class="pl-4 pr-3 text-neutral-500">
                     <i class="fas fa-search" id="mainIcon"></i>
                 </div>
                 <div class="relative flex-grow h-14">
                     <input type="text" id="ghostInput" disabled>
-                    <!-- enterkeyhint="go" makes the mobile keyboard button blue/prominent -->
+                    <!-- REMOVED AUTOFOCUS to fix iOS keyboard blocking -->
                     <input 
                         type="text" 
                         id="mainInput" 
@@ -359,7 +363,7 @@
                 this.defaults = {
                     "youtube": { url: "https://www.youtube.com", icon: "fa-play", name: "YouTube", class: "text-red-500" },
                     "gmail": { url: "https://mail.google.com", icon: "fa-envelope", name: "Gmail", class: "text-red-400" },
-                    "outlook": { url: "https://outlook.live.com", icon: "fa-envelope-open-text", name: "Outlook", class: "text-blue-500" },
+                    "outlook": { url: "https://outlook.live.com", icon: "fa-envelope", name: "Outlook", class: "text-blue-500" },
                     "spotify": { url: "https://open.spotify.com", icon: "fa-music", name: "Spotify", class: "text-green-500" },
                     "applemusic": { url: "https://music.apple.com", icon: "fa-music", name: "Apple Music", class: "text-pink-500" },
                     "maps": { url: "https://maps.google.com", icon: "fa-map-marker-alt", name: "Maps", class: "text-green-500" },
@@ -443,31 +447,13 @@
             ghost: document.getElementById('ghostInput'),
             box: document.getElementById('predictionsBox'),
             list: document.getElementById('resultsList'),
-            hint: document.getElementById('tabHint')
+            hint: document.getElementById('tabHint'),
+            wrapper: document.getElementById('wrapperClickTarget')
         };
         let suggestions = [];
         let selIndex = 0;
 
-        // --- MOBILE & DESKTOP CLICK-TO-FOCUS ---
-        document.addEventListener('click', (e) => {
-            // If modal is active, ignore body clicks
-            if (document.querySelector('.modal-overlay.active')) return;
-            // If interacting with specific elements, ignore
-            if (e.target.closest('button') || e.target.closest('.result-item') || e.target.closest('input') || e.target.closest('textarea')) return;
-            
-            // Otherwise, focus main input (Makes whole screen a tap target)
-            els.main.focus();
-        });
-
-        // --- KEYBOARD SHORTCUTS ---
-        document.addEventListener('keydown', (e) => {
-            if (document.querySelector('.modal-overlay.active')) return;
-            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-            // If user types a letter, focus input automatically
-            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) els.main.focus();
-        });
-
-        // --- AUTO SYNC LOOP ---
+        // --- AUTOMATION ---
         window.addEventListener('load', () => {
             const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
             if(creds.user && creds.pass) {
@@ -480,7 +466,8 @@
         setInterval(() => {
             const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
             if (!creds.user || !creds.pass) return;
-            const isTyping = (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+            const activeTag = document.activeElement.tagName;
+            const isTyping = (activeTag === 'INPUT' || activeTag === 'TEXTAREA');
             if (!isTyping) Syncer.executeSmartSync(creds.user, creds.pass, true);
         }, 20000); 
 
@@ -491,10 +478,30 @@
             }
         });
 
-        // --- RENDER LOGIC ---
+        // --- MOBILE TAP TO FOCUS ---
+        document.addEventListener('click', (e) => {
+            if (document.querySelector('.modal-overlay.active')) return;
+            if (e.target.closest('button') || e.target.closest('.result-item') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            // Trigger focus on ANY body tap that isn't a specific control
+            els.main.focus();
+        });
+
+        // --- DESKTOP KEYBOARD FOCUS ---
+        document.addEventListener('keydown', (e) => {
+            if (document.querySelector('.modal-overlay.active')) return;
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) els.main.focus();
+        });
+
         els.main.addEventListener('input', (e) => render(e.target.value));
         els.main.addEventListener('focus', () => render(els.main.value));
         
+        // Extra handler for iOS to force keyboard up on wrapper click
+        els.wrapper.addEventListener('click', (e) => {
+            els.main.focus();
+        });
+
         function render(val) {
             suggestions = brain.predict(val);
             els.list.innerHTML = '';
@@ -518,7 +525,7 @@
                     if (item.type === 'note') { icon = 'fa-sticky-note'; color = 'text-yellow-500'; tag = 'NOTE'; }
                     if (item.type === 'cmd') { color = 'text-blue-400'; tag = 'CMD'; }
                     div.innerHTML = `<div class="flex items-center text-neutral-200"><div class="w-8 flex justify-center mr-2 ${color}"><i class="fas ${icon}"></i></div><span class="font-medium">${item.term}</span></div>${tag ? `<span class="text-[10px] bg-neutral-800 text-neutral-500 px-1.5 py-0.5 rounded border border-neutral-700">${tag}</span>` : ''}`;
-                    div.onclick = () => run(item);
+                    div.onclick = (e) => { e.stopPropagation(); run(item); };
                     els.list.appendChild(div);
                 });
             } else {
