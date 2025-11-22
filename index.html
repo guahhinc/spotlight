@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Spotlight</title>
     
-    <!-- Mobile PWA Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#050505">
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/96/search.png">
 
-    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
@@ -19,6 +17,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&display=swap');
 
         :root { --bg-color: #050505; --card-bg: #171717; --accent: #a855f7; }
+        
         body { 
             font-family: 'Inter Tight', sans-serif; 
             background-color: var(--bg-color); 
@@ -27,9 +26,12 @@
             overflow: hidden;
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
+            overscroll-behavior: none; 
+            user-select: none; 
         }
 
-        /* Search Bar Glow */
+        input, textarea { user-select: text; }
+
         .search-container { position: relative; z-index: 10; }
         .search-glow {
             position: absolute; inset: -2px;
@@ -39,45 +41,46 @@
         }
         .search-container:focus-within .search-glow { opacity: 1; filter: blur(25px); }
 
-        /* Inputs */
         .input-wrapper { 
             position: relative; background: var(--card-bg); 
             border-radius: 0.75rem; display: flex; align-items: center; 
             border: 1px solid #262626;
+            min-height: 3.5rem; 
         }
-        #mainInput { background: transparent; color: white; z-index: 2; position: relative; }
-        #mainInput::placeholder { color: #525252; font-weight: 300; }
+        
+        #mainInput { background: transparent; color: white; z-index: 2; position: relative; font-size: 18px; }
+        #mainInput::placeholder { color: #525252; font-weight: 300; opacity: 1; } 
+        
         #ghostInput { 
             position: absolute; left: 0; top: 0; width: 100%; height: 100%; 
             background: transparent; color: #525252; pointer-events: none; 
-            z-index: 1; padding-left: 3rem; 
+            z-index: 1; padding-left: 3rem; font-size: 18px;
         }
 
-        /* Results List */
         .result-item { border-left: 3px solid transparent; }
+        .result-item:active { background-color: #262626; } 
         .result-item.selected { background-color: #262626; border-left: 3px solid var(--accent); }
         
-        /* Scrollbars */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
-        /* Modals */
         .modal-overlay { 
             position: fixed; inset: 0; background: rgba(0,0,0,0.9); 
-            backdrop-filter: blur(5px); z-index: 50; 
+            backdrop-filter: blur(10px); z-index: 50; 
             display: flex; justify-content: center; align-items: center; 
-            opacity: 0; pointer-events: none; transition: opacity 0.2s; padding: 1rem;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s; 
+            padding: 1rem; padding-bottom: env(safe-area-inset-bottom);
         }
         .modal-overlay.active { opacity: 1; pointer-events: auto; }
         .modal-content { 
-            background: #111; border: 1px solid #333; border-radius: 1rem; 
+            background: #111; border: 1px solid #333; border-radius: 1.2rem; 
             width: 100%; max-width: 550px; max-height: 85dvh; 
             overflow-y: auto; transform: scale(0.95); transition: transform 0.2s; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         }
         .modal-overlay.active .modal-content { transform: scale(1); }
 
-        /* Icons Grid */
         .icon-option { 
             aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
             background: #222; border-radius: 8px; cursor: pointer; color: #666; 
@@ -85,15 +88,15 @@
         }
         .icon-option.selected { background: #3b0764; border-color: #a855f7; color: #fff; }
 
-        /* Sync Indicator */
+        /* Sync Indicator - Updated */
         #syncIndicator {
-            position: fixed; bottom: 20px; right: 20px;
-            background: #262626; border: 1px solid #333;
-            padding: 8px 12px; border-radius: 20px;
-            font-size: 12px; color: #888;
-            display: flex; align-items: center; gap: 8px;
+            position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: 20px;
+            background: rgba(38, 38, 38, 0.8); border: 1px solid #333;
+            padding: 6px 12px; border-radius: 30px;
+            font-size: 11px; color: #666; font-weight: 500;
+            display: flex; align-items: center; gap: 6px;
             transform: translateY(100px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 40;
+            z-index: 40; backdrop-filter: blur(4px); pointer-events: none;
         }
         #syncIndicator.visible { transform: translateY(0); }
 
@@ -103,27 +106,24 @@
 </head>
 <body class="flex flex-col items-center justify-start pt-24 md:pt-32">
 
-    <!-- Sync Status Popup -->
     <div id="syncIndicator">
-        <i class="fas fa-circle-notch fa-spin text-blue-500"></i>
-        <span id="syncText">Saving...</span>
+        <i class="fas fa-circle-notch fa-spin text-purple-500"></i>
+        <span id="syncText">Syncing...</span>
     </div>
 
     <div class="w-full max-w-lg px-4 md:px-0 relative">
-        
-        <!-- Header Actions -->
         <div class="flex justify-between items-end mb-6 px-2">
             <div>
                 <h1 class="text-3xl font-bold text-white tracking-tight">Spotlight</h1>
                 <p class="text-neutral-500 text-sm mt-1">Ready.</p>
             </div>
             <div class="flex gap-3 pb-1">
-                <button onclick="notesApp.openNew()" class="p-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 transition-colors group">
+                <button onclick="notesApp.openNew()" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
                     <span class="text-xs text-neutral-400 group-hover:text-white font-medium flex items-center gap-2">
                         <i class="fas fa-plus"></i> <span class="hidden sm:inline">Note</span>
                     </span>
                 </button>
-                <button onclick="settingsApp.open()" class="p-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 transition-colors group">
+                <button onclick="settingsApp.open()" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
                     <span class="text-xs text-neutral-400 group-hover:text-white font-medium flex items-center gap-2">
                         <i class="fas fa-cog"></i> <span class="hidden sm:inline">Settings</span>
                     </span>
@@ -131,100 +131,68 @@
             </div>
         </div>
 
-        <!-- Search Bar -->
         <div class="search-container">
             <div class="search-glow"></div>
-            
             <div class="input-wrapper shadow-2xl">
                 <div class="pl-4 pr-3 text-neutral-500">
                     <i class="fas fa-search" id="mainIcon"></i>
                 </div>
-                
-                <div class="relative flex-grow h-12 md:h-14">
-                    <!-- Ghost Overlay -->
+                <div class="relative flex-grow h-14">
                     <input type="text" id="ghostInput" disabled>
-                    <!-- Real Input -->
-                    <input 
-                        type="text" 
-                        id="mainInput" 
-                        class="h-full w-full pl-2 text-lg outline-none font-light bg-transparent" 
-                        autocomplete="off" 
-                        spellcheck="false" 
-                        autofocus 
-                        placeholder="Search..."
-                    >
+                    <input type="text" id="mainInput" class="h-full w-full pl-2 text-lg outline-none font-light bg-transparent" autocomplete="off" spellcheck="false" placeholder="Search...">
                 </div>
-                
                 <div class="pr-3 hidden md:block" id="tabHint">
                     <span class="text-[10px] font-mono bg-neutral-800 text-neutral-400 px-2 py-1 rounded border border-neutral-700 opacity-0 transition-opacity duration-200">TAB</span>
                 </div>
             </div>
-
-            <!-- Dropdown Results -->
             <div id="predictionsBox" class="absolute top-full left-0 right-0 mt-3 bg-[#111]/95 backdrop-blur-xl border border-neutral-800 rounded-xl shadow-2xl overflow-hidden hidden z-50">
-                <div id="resultsList" class="max-h-[50vh] overflow-y-auto results-scroll py-1"></div>
+                <div id="resultsList" class="max-h-[50dvh] overflow-y-auto results-scroll py-1"></div>
             </div>
         </div>
-        
-        <div class="mt-6 text-neutral-600 text-xs text-center opacity-60">
-            Start typing to search
-        </div>
+        <div class="mt-6 text-neutral-600 text-xs text-center opacity-60">Tap to search</div>
     </div>
 
-    <!-- SETTINGS / ACCOUNT MODAL -->
+    <!-- SETTINGS MODAL -->
     <div id="settingsModal" class="modal-overlay">
         <div class="modal-content p-6">
             <div class="flex justify-between items-center mb-6 border-b border-neutral-800 pb-4">
                 <h2 class="text-lg font-bold text-white"><i class="fas fa-sliders-h mr-2 text-purple-500"></i>Settings</h2>
-                <button onclick="settingsApp.close()" class="text-neutral-500 hover:text-white"><i class="fas fa-times"></i></button>
+                <button onclick="settingsApp.close()" class="text-neutral-500 hover:text-white p-2"><i class="fas fa-times"></i></button>
             </div>
 
-            <!-- 1. Account -->
             <div class="mb-8">
-                <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Account & Sync</h3>
-                <div class="bg-neutral-900/50 p-4 rounded-lg border border-neutral-800">
+                <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Account</h3>
+                <div class="bg-neutral-900/50 p-4 rounded-xl border border-neutral-800">
+                    <p class="text-xs text-neutral-500 mb-3">Log in once. Data merges automatically every 20s.</p>
                     <div class="space-y-3">
-                        <input id="syncUser" type="text" placeholder="Username" class="w-full bg-black border border-neutral-700 text-white px-3 py-2 rounded text-sm focus:border-purple-500 outline-none">
-                        <input id="syncPass" type="password" placeholder="Password" class="w-full bg-black border border-neutral-700 text-white px-3 py-2 rounded text-sm focus:border-purple-500 outline-none">
+                        <input id="syncUser" type="text" placeholder="Username" class="w-full bg-black border border-neutral-700 text-white px-3 py-3 rounded-lg text-sm focus:border-purple-500 outline-none">
+                        <input id="syncPass" type="password" placeholder="Password" class="w-full bg-black border border-neutral-700 text-white px-3 py-3 rounded-lg text-sm focus:border-purple-500 outline-none">
                     </div>
                     <div class="flex gap-2 mt-3">
-                        <button onclick="syncApp.manualSync('login')" class="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-2 rounded text-sm border border-neutral-700 transition-colors">
+                        <button onclick="syncApp.forceSync()" class="w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 rounded-lg text-sm border border-neutral-700 transition-colors font-medium">
                             Login / Signup
-                        </button>
-                        <button onclick="syncApp.manualSync('save')" class="flex-1 bg-purple-900/50 hover:bg-purple-900/80 text-purple-200 py-2 rounded text-sm border border-purple-800 transition-colors">
-                            Force Save
                         </button>
                     </div>
                     <div id="modalSyncStatus" class="text-xs text-center mt-2 text-neutral-500 h-4"></div>
                 </div>
             </div>
 
-            <!-- 2. Custom Shortcut -->
             <div class="mb-8">
                 <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Add Shortcut</h3>
                 <div class="flex gap-2 mb-3">
-                    <input id="newShortName" placeholder="Name (e.g. Work)" class="bg-neutral-900 border border-neutral-800 text-white px-3 py-2 rounded w-1/3 text-sm outline-none focus:border-purple-500">
-                    <input id="newShortUrl" placeholder="https://..." class="bg-neutral-900 border border-neutral-800 text-white px-3 py-2 rounded w-2/3 text-sm outline-none focus:border-purple-500">
+                    <input id="newShortName" placeholder="Name" class="bg-neutral-900 border border-neutral-800 text-white px-3 py-3 rounded-lg w-1/3 text-sm outline-none focus:border-purple-500">
+                    <input id="newShortUrl" placeholder="https://..." class="bg-neutral-900 border border-neutral-800 text-white px-3 py-3 rounded-lg w-2/3 text-sm outline-none focus:border-purple-500">
                 </div>
-                
                 <div class="mb-3">
-                    <div id="iconGrid" class="grid grid-cols-8 gap-2"></div>
+                    <div id="iconGrid" class="grid grid-cols-6 md:grid-cols-8 gap-2"></div>
                     <input type="hidden" id="selectedIconInput">
                 </div>
-
-                <button onclick="settingsApp.addShortcut()" class="w-full bg-neutral-800 hover:bg-neutral-700 text-white py-2 rounded text-sm border border-neutral-700 mb-4">
-                    Create Shortcut
-                </button>
-
-                <!-- List -->
+                <button onclick="settingsApp.addShortcut()" class="w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 rounded-lg text-sm border border-neutral-700 mb-4 font-medium">Create Shortcut</button>
                 <div id="shortcutsList" class="space-y-1 max-h-40 overflow-y-auto"></div>
             </div>
 
-            <!-- 3. Data Reset -->
             <div class="pt-4 border-t border-neutral-800">
-                <button onclick="if(confirm('Reset all local data?')) { brain.reset(); settingsApp.close(); }" class="text-red-500 text-xs hover:text-red-400 hover:underline">
-                    Reset Local Data
-                </button>
+                <button onclick="if(confirm('Reset all local data?')) { brain.reset(); settingsApp.close(); }" class="text-red-500 text-xs hover:text-red-400 hover:underline p-2">Reset Local Data</button>
             </div>
         </div>
     </div>
@@ -236,35 +204,25 @@
                 <input id="noteTitle" type="text" placeholder="Untitled Note" class="bg-transparent text-white font-bold text-lg outline-none w-full placeholder-neutral-600">
                 <div class="flex gap-2">
                     <button onclick="notesApp.deleteCurrent()" class="text-neutral-500 hover:text-red-500 p-2"><i class="fas fa-trash"></i></button>
-                    <button onclick="notesApp.saveAndClose()" class="text-purple-400 hover:text-white font-medium text-sm px-3 py-1 rounded bg-purple-900/20 border border-purple-900/50">Done</button>
+                    <button onclick="notesApp.saveAndClose()" class="text-purple-400 hover:text-white font-medium text-sm px-4 py-2 rounded-lg bg-purple-900/20 border border-purple-900/50">Done</button>
                 </div>
             </div>
-            <textarea id="noteBody" class="flex-grow bg-[#0a0a0a] text-neutral-300 p-4 outline-none resize-none text-sm leading-relaxed" placeholder="Start typing..."></textarea>
+            <textarea id="noteBody" class="flex-grow bg-[#0a0a0a] text-neutral-300 p-4 outline-none resize-none text-base leading-relaxed" placeholder="Start typing..."></textarea>
         </div>
     </div>
 
     <script>
         // --- CONFIGURATION ---
-        // 1. PASTE YOUR APPS SCRIPT URL HERE
         const API_URL = "https://script.google.com/macros/s/AKfycbyIm8r81-pzMIZqWJv-X_Mykee7dapXYxATnCP_cuVuzZapRx0bU7mI4lU7KpvBYgcm/exec"; 
         
-        // 2. STORAGE KEYS
         const KEYS = {
-            NOTES: 'spotlight_notes_v2025',
-            SHORTCUTS: 'spotlight_shortcuts_v2025',
-            HISTORY: 'spotlight_history_v2025',
-            CREDS: 'spotlight_creds_v2025'
+            NOTES: 'spotlight_notes_v2026',
+            SHORTCUTS: 'spotlight_shortcuts_v2026',
+            HISTORY: 'spotlight_history_v2026',
+            CREDS: 'spotlight_creds_v2026'
         };
 
         // --- UTILS ---
-        const debounce = (func, wait) => {
-            let timeout;
-            return function(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
-            };
-        };
-
         function levenshtein(a, b) {
             if(a.length == 0) return b.length; 
             if(b.length == 0) return a.length;
@@ -280,6 +238,40 @@
             return matrix[b.length][a.length];
         }
 
+        // --- MERGE LOGIC (Smart Conflict Resolution) ---
+        const Merger = {
+            notes: (local, server) => {
+                const map = new Map();
+                // Add server first
+                server.forEach(n => map.set(n.id, n));
+                // Merge local
+                local.forEach(n => {
+                    const exists = map.get(n.id);
+                    // If local is newer or exists only locally, keep local
+                    if (!exists || (n.updated > exists.updated)) {
+                        map.set(n.id, n);
+                    }
+                });
+                // Return sorted by updated date desc
+                return Array.from(map.values()).sort((a,b) => b.updated - a.updated);
+            },
+            shortcuts: (localMap, serverMap) => {
+                // Simple merge, local preferred if conflict
+                return { ...serverMap, ...localMap }; 
+            },
+            history: (local, server) => {
+                const map = new Map();
+                server.forEach(h => map.set(h.term, h));
+                local.forEach(h => {
+                    const exists = map.get(h.term);
+                    if (!exists || h.count > exists.count) {
+                        map.set(h.term, h);
+                    }
+                });
+                return Array.from(map.values());
+            }
+        };
+
         // --- SYNC SYSTEM ---
         const Syncer = {
             indicator: document.getElementById('syncIndicator'),
@@ -289,53 +281,53 @@
                 Syncer.text.innerText = msg;
                 Syncer.text.className = isError ? "text-red-400" : "text-neutral-300";
                 Syncer.indicator.classList.add('visible');
-                if(!msg.includes("...")) setTimeout(() => Syncer.indicator.classList.remove('visible'), 2500);
+                // Hide after 2 seconds
+                setTimeout(() => Syncer.indicator.classList.remove('visible'), 2000);
             },
 
-            // Auto-sync: Debounced call
-            trigger: debounce(async () => {
-                const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
-                if (creds.user && creds.pass && API_URL.startsWith("http")) {
-                    Syncer.show("Syncing changes...");
-                    await Syncer.execute('save', creds.user, creds.pass, true);
-                }
-            }, 2000), 
-
-            execute: async (action, user, pass, silent = false) => {
-                const payload = {
-                    action: action,
-                    username: user,
-                    password: pass,
-                    data: {
-                        notes: brain.notes.list,
-                        shortcuts: brain.shortcuts.custom,
-                        savedShortcuts: brain.shortcuts.auto,
-                        history: brain.history
-                    }
-                };
+            // The "Two-Step Shuffle": Download -> Merge -> Upload
+            executeSmartSync: async (user, pass, silent = false) => {
+                if(silent) Syncer.show("Syncing...");
 
                 try {
-                    const res = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
+                    // STEP 1: DOWNLOAD
+                    const res = await fetch(API_URL, { 
+                        method: "POST", 
+                        body: JSON.stringify({ action: 'login', username: user, password: pass }) 
+                    });
                     const json = await res.json();
 
                     if (json.status === "success") {
-                        if (action === 'login') {
-                            // IMPORT DATA
-                            if (json.data.notes) brain.notes.list = json.data.notes;
-                            if (json.data.shortcuts) brain.shortcuts.custom = json.data.shortcuts;
-                            if (json.data.savedShortcuts) brain.shortcuts.auto = json.data.savedShortcuts;
-                            if (json.data.history) brain.history = json.data.history;
-                            
-                            // Persist all
-                            brain.notes.saveLocal();
-                            brain.shortcuts.saveLocal();
-                            brain.saveHistoryLocal();
-                            
-                            if(!silent) Syncer.show("All synced up!");
-                            settingsApp.renderList();
-                        } else {
-                            if(!silent) Syncer.show("Saved to cloud.");
-                        }
+                        // STEP 2: MERGE
+                        if (json.data.notes) brain.notes.list = Merger.notes(brain.notes.list, json.data.notes);
+                        if (json.data.shortcuts) brain.shortcuts.custom = Merger.shortcuts(brain.shortcuts.custom, json.data.shortcuts);
+                        if (json.data.savedShortcuts) brain.shortcuts.auto = Merger.shortcuts(brain.shortcuts.auto, json.data.savedShortcuts);
+                        if (json.data.history) brain.history = Merger.history(brain.history, json.data.history);
+
+                        // Save Merged State Locally
+                        brain.notes.saveLocal();
+                        brain.shortcuts.saveLocal();
+                        brain.saveHistoryLocal();
+
+                        // Refresh UI if needed
+                        if(settingsApp.modal.classList.contains('active')) settingsApp.renderList();
+
+                        // STEP 3: UPLOAD MERGED DATA
+                        const uploadPayload = {
+                            action: 'save',
+                            username: user,
+                            password: pass,
+                            data: {
+                                notes: brain.notes.list,
+                                shortcuts: brain.shortcuts.custom,
+                                savedShortcuts: brain.shortcuts.auto,
+                                history: brain.history
+                            }
+                        };
+                        
+                        await fetch(API_URL, { method: "POST", body: JSON.stringify(uploadPayload) });
+                        
+                        if(!silent) Syncer.show("Up to date!");
                         return true;
                     } else {
                         if(!silent) Syncer.show("Error: " + json.message, true);
@@ -355,7 +347,7 @@
                 this.list = JSON.parse(localStorage.getItem(KEYS.NOTES)) || [];
             }
             saveLocal() { localStorage.setItem(KEYS.NOTES, JSON.stringify(this.list)); }
-            save() { this.saveLocal(); Syncer.trigger(); }
+            save() { this.saveLocal(); } // Sync handled by timer
             
             create(title, body) {
                 const id = Date.now().toString();
@@ -366,10 +358,7 @@
                 const idx = this.list.findIndex(n => n.id === id);
                 if (idx !== -1) { this.list[idx] = { ...this.list[idx], title, body, updated: Date.now() }; this.save(); }
             }
-            delete(id) {
-                this.list = this.list.filter(n => n.id !== id);
-                this.save();
-            }
+            delete(id) { this.list = this.list.filter(n => n.id !== id); this.save(); }
             get(id) { return this.list.find(n => n.id === id); }
         }
 
@@ -391,10 +380,8 @@
                 this.auto = saved.auto || {};
             }
             saveLocal() { localStorage.setItem(KEYS.SHORTCUTS, JSON.stringify({ custom: this.custom, auto: this.auto })); }
-            save() { this.saveLocal(); Syncer.trigger(); }
-            
+            save() { this.saveLocal(); }
             getAll() { return { ...this.defaults, ...this.auto, ...this.custom }; }
-            
             add(name, url, icon) {
                 const key = name.toLowerCase().replace(/\s/g, '');
                 this.custom[key] = { name, url, icon: icon || 'fa-link', class: 'text-purple-400' };
@@ -414,21 +401,15 @@
                 if (this.history.length === 0) this.seed();
             }
             saveHistoryLocal() { localStorage.setItem(KEYS.HISTORY, JSON.stringify(this.history)); }
-            save() { this.saveHistoryLocal(); Syncer.trigger(); }
-            
+            save() { this.saveHistoryLocal(); }
             seed() {
                 const now = Date.now();
-                this.history = [
-                    { term: "YouTube", count: 5, lastAccess: now },
-                    { term: "Gmail", count: 3, lastAccess: now }
-                ];
+                this.history = [ { term: "YouTube", count: 5, lastAccess: now }, { term: "Gmail", count: 3, lastAccess: now } ];
                 this.saveHistoryLocal();
             }
-
             predict(input) {
                 const q = input.toLowerCase().trim();
                 if (!q) return [];
-                
                 const results = [];
                 const seen = new Set();
                 const add = (type, item, score, meta={}) => {
@@ -436,17 +417,9 @@
                     results.push({ type, term: item.term, score, ...meta });
                     seen.add(item.term.toLowerCase());
                 };
-
-                // 1. Commands
                 if ("settings".startsWith(q) || "config".startsWith(q)) add('cmd', {term: "Settings"}, 2000, {action: 'settings', icon:'fa-cog'});
                 if ("new note".startsWith(q) || "note".startsWith(q)) add('cmd', {term: "New Note"}, 2000, {action: 'note', icon:'fa-plus'});
-
-                // 2. Notes
-                this.notes.list.forEach(n => {
-                    if (n.title.toLowerCase().includes(q)) add('note', {term: n.title}, 1000, {id: n.id});
-                });
-
-                // 3. Shortcuts
+                this.notes.list.forEach(n => { if (n.title.toLowerCase().includes(q)) add('note', {term: n.title}, 1000, {id: n.id}); });
                 const all = this.shortcuts.getAll();
                 for (const [key, val] of Object.entries(all)) {
                     const nameLower = val.name.toLowerCase();
@@ -454,11 +427,8 @@
                     if (nameLower.startsWith(q)) score = 900;
                     else if (nameLower.split(' ').some(w => w.startsWith(q))) score = 850;
                     else if (q.length > 2 && levenshtein(q, nameLower) <= 1) score = 700;
-
                     if (score > 0) add('shortcut', {term: val.name}, score, { url: val.url, icon: val.icon, class: val.class });
                 }
-
-                // 4. History
                 this.history.forEach(h => {
                     if (h.term.toLowerCase().includes(q)) {
                         let score = h.count + 500;
@@ -468,29 +438,17 @@
                         add('history', h, score, meta);
                     }
                 });
-
                 return results.sort((a,b) => b.score - a.score).slice(0, 6);
             }
-
             learn(term) {
                 const all = this.shortcuts.getAll();
                 const match = Object.values(all).find(s => s.name.toLowerCase() === term.toLowerCase());
                 const finalTerm = match ? match.name : term;
-
                 const existing = this.history.find(h => h.term.toLowerCase() === finalTerm.toLowerCase());
-                if (existing) {
-                    existing.count++;
-                    existing.lastAccess = Date.now();
-                } else {
-                    this.history.push({ term: finalTerm, count: 1, lastAccess: Date.now() });
-                }
+                if (existing) { existing.count++; existing.lastAccess = Date.now(); } else { this.history.push({ term: finalTerm, count: 1, lastAccess: Date.now() }); }
                 this.save();
             }
-
-            reset() {
-                localStorage.clear();
-                window.location.reload();
-            }
+            reset() { localStorage.clear(); window.location.reload(); }
         }
 
         // --- APP LOGIC ---
@@ -500,23 +458,47 @@
             ghost: document.getElementById('ghostInput'),
             box: document.getElementById('predictionsBox'),
             list: document.getElementById('resultsList'),
-            hint: document.getElementById('tabHint'),
-            status: document.getElementById('statusText')
+            hint: document.getElementById('tabHint')
         };
-
         let suggestions = [];
         let selIndex = 0;
 
-        // AUTO-SYNC ON STARTUP
+        // --- AUTOMATION ---
+        
+        // 1. ON LOAD
         window.addEventListener('load', () => {
             const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
             if(creds.user && creds.pass) {
-                Syncer.show("Syncing from cloud...");
-                Syncer.execute('login', creds.user, creds.pass, true);
+                // Silent Sync on Load
+                Syncer.executeSmartSync(creds.user, creds.pass, true);
+                // Fill settings
+                document.getElementById('syncUser').value = creds.user;
+                document.getElementById('syncPass').value = creds.pass;
             }
         });
 
-        // Auto-Focus Logic
+        // 2. 20 SECOND LOOP
+        setInterval(() => {
+            const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
+            if (!creds.user || !creds.pass) return;
+
+            const activeTag = document.activeElement.tagName;
+            const isTyping = (activeTag === 'INPUT' || activeTag === 'TEXTAREA');
+
+            // Only sync if user is NOT typing to avoid UI jank
+            if (!isTyping) {
+                Syncer.executeSmartSync(creds.user, creds.pass, true);
+            }
+        }, 20000); 
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
+                if(creds.user) Syncer.executeSmartSync(creds.user, creds.pass, true);
+            }
+        });
+
+        // Event Listeners
         document.addEventListener('keydown', (e) => {
             if (document.querySelector('.modal-overlay.active')) return;
             if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
@@ -525,7 +507,6 @@
 
         els.main.addEventListener('input', (e) => render(e.target.value));
         els.main.addEventListener('focus', () => render(els.main.value));
-        
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.search-container')) {
                 els.box.classList.add('hidden');
@@ -537,10 +518,8 @@
             suggestions = brain.predict(val);
             els.list.innerHTML = '';
             selIndex = 0;
-
             if (suggestions.length > 0) {
                 els.box.classList.remove('hidden');
-                
                 const top = suggestions[0];
                 if (val && top.term.toLowerCase().startsWith(val.toLowerCase())) {
                     els.ghost.value = val + top.term.substring(val.length);
@@ -549,25 +528,15 @@
                     els.ghost.value = '';
                     els.hint.style.opacity = '0';
                 }
-
                 suggestions.forEach((item, idx) => {
                     const div = document.createElement('div');
                     div.className = `result-item p-3 mx-1 rounded-lg flex items-center justify-between cursor-pointer transition-colors ${idx === 0 ? 'selected' : ''} hover:bg-white/5`;
-                    
                     let icon = item.icon || 'fa-search';
                     let color = item.class || 'text-neutral-500';
                     let tag = '';
-                    
                     if (item.type === 'note') { icon = 'fa-sticky-note'; color = 'text-yellow-500'; tag = 'NOTE'; }
                     if (item.type === 'cmd') { color = 'text-blue-400'; tag = 'CMD'; }
-
-                    div.innerHTML = `
-                        <div class="flex items-center text-neutral-200">
-                            <div class="w-8 flex justify-center mr-2 ${color}"><i class="fas ${icon}"></i></div>
-                            <span class="font-medium">${item.term}</span>
-                        </div>
-                        ${tag ? `<span class="text-[10px] bg-neutral-800 text-neutral-500 px-1.5 py-0.5 rounded border border-neutral-700">${tag}</span>` : ''}
-                    `;
+                    div.innerHTML = `<div class="flex items-center text-neutral-200"><div class="w-8 flex justify-center mr-2 ${color}"><i class="fas ${icon}"></i></div><span class="font-medium">${item.term}</span></div>${tag ? `<span class="text-[10px] bg-neutral-800 text-neutral-500 px-1.5 py-0.5 rounded border border-neutral-700">${tag}</span>` : ''}`;
                     div.onclick = () => run(item);
                     els.list.appendChild(div);
                 });
@@ -588,78 +557,30 @@
                 brain.learn(item.term);
                 els.main.value = "Opening...";
                 document.getElementById('mainIcon').className = "fas fa-circle-notch fa-spin text-purple-500";
-                
-                if (item.url) {
-                    setTimeout(() => window.location.href = item.url, 300);
-                } else {
-                    setTimeout(() => window.open(`https://www.google.com/search?q=${encodeURIComponent(item.term)}`, '_blank'), 300);
-                    setTimeout(() => { els.main.value = ""; document.getElementById('mainIcon').className = "fas fa-search"; }, 1000);
-                }
+                if (item.url) { setTimeout(() => window.location.href = item.url, 300); } 
+                else { setTimeout(() => window.open(`https://www.google.com/search?q=${encodeURIComponent(item.term)}`, '_blank'), 300); setTimeout(() => { els.main.value = ""; document.getElementById('mainIcon').className = "fas fa-search"; }, 1000); }
             }
             els.box.classList.add('hidden');
         }
 
         els.main.addEventListener('keydown', (e) => {
-            if (e.key === 'Tab' && suggestions.length > 0) {
-                e.preventDefault();
-                els.main.value = suggestions[0].term;
-                render(els.main.value);
-            }
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                selIndex = (selIndex + 1) % suggestions.length;
-                updateSel();
-            }
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                selIndex = (selIndex - 1 + suggestions.length) % suggestions.length;
-                updateSel();
-            }
-            if (e.key === 'Enter') {
-                if (suggestions.length > 0) run(suggestions[selIndex]);
-                else if (els.main.value) run({ term: els.main.value, type: 'history' });
-            }
+            if (e.key === 'Tab' && suggestions.length > 0) { e.preventDefault(); els.main.value = suggestions[0].term; render(els.main.value); }
+            if (e.key === 'ArrowDown') { e.preventDefault(); selIndex = (selIndex + 1) % suggestions.length; updateSel(); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); selIndex = (selIndex - 1 + suggestions.length) % suggestions.length; updateSel(); }
+            if (e.key === 'Enter') { if (suggestions.length > 0) run(suggestions[selIndex]); else if (els.main.value) run({ term: els.main.value, type: 'history' }); }
         });
 
-        function updateSel() {
-            Array.from(els.list.children).forEach((el, i) => {
-                if (i === selIndex) { el.classList.add('selected'); el.scrollIntoView({ block: 'nearest' }); }
-                else el.classList.remove('selected');
-            });
-        }
+        function updateSel() { Array.from(els.list.children).forEach((el, i) => { if (i === selIndex) { el.classList.add('selected'); el.scrollIntoView({ block: 'nearest' }); } else el.classList.remove('selected'); }); }
 
-        // --- APPS ---
         const notesApp = {
             modal: document.getElementById('notesModal'),
             title: document.getElementById('noteTitle'),
             body: document.getElementById('noteBody'),
             currId: null,
-            
-            openNew: () => {
-                notesApp.currId = null;
-                notesApp.title.value = ""; notesApp.body.value = "";
-                notesApp.modal.classList.add('active');
-                setTimeout(() => notesApp.title.focus(), 100);
-            },
-            openExisting: (id) => {
-                const n = brain.notes.get(id);
-                if(n) {
-                    notesApp.currId = id;
-                    notesApp.title.value = n.title; notesApp.body.value = n.body;
-                    notesApp.modal.classList.add('active');
-                }
-            },
-            saveAndClose: () => {
-                if(notesApp.title.value.trim() || notesApp.body.value.trim()) {
-                    if(notesApp.currId) brain.notes.update(notesApp.currId, notesApp.title.value, notesApp.body.value);
-                    else brain.notes.create(notesApp.title.value, notesApp.body.value);
-                }
-                notesApp.modal.classList.remove('active');
-            },
-            deleteCurrent: () => {
-                if(notesApp.currId) brain.notes.delete(notesApp.currId);
-                notesApp.modal.classList.remove('active');
-            }
+            openNew: () => { notesApp.currId = null; notesApp.title.value = ""; notesApp.body.value = ""; notesApp.modal.classList.add('active'); setTimeout(() => notesApp.title.focus(), 100); },
+            openExisting: (id) => { const n = brain.notes.get(id); if(n) { notesApp.currId = id; notesApp.title.value = n.title; notesApp.body.value = n.body; notesApp.modal.classList.add('active'); } },
+            saveAndClose: () => { if(notesApp.title.value.trim() || notesApp.body.value.trim()) { if(notesApp.currId) brain.notes.update(notesApp.currId, notesApp.title.value, notesApp.body.value); else brain.notes.create(notesApp.title.value, notesApp.body.value); } notesApp.modal.classList.remove('active'); },
+            deleteCurrent: () => { if(notesApp.currId) brain.notes.delete(notesApp.currId); notesApp.modal.classList.remove('active'); }
         };
 
         const settingsApp = {
@@ -668,67 +589,25 @@
             grid: document.getElementById('iconGrid'),
             iconInput: document.getElementById('selectedIconInput'),
             icons: ["fa-globe", "fa-star", "fa-rocket", "fa-gamepad", "fa-code", "fa-music", "fa-camera", "fa-shopping-cart", "fa-briefcase", "fa-graduation-cap", "fa-plane", "fa-envelope", "fa-hashtag", "fa-ghost", "fa-bolt", "fa-fire"],
-
-            open: () => {
-                const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
-                if(creds.user) document.getElementById('syncUser').value = creds.user;
-                if(creds.pass) document.getElementById('syncPass').value = creds.pass;
-                settingsApp.renderIcons();
-                settingsApp.renderList();
-                settingsApp.modal.classList.add('active');
-            },
+            open: () => { settingsApp.renderIcons(); settingsApp.renderList(); settingsApp.modal.classList.add('active'); },
             close: () => settingsApp.modal.classList.remove('active'),
-            
-            renderIcons: () => {
-                settingsApp.grid.innerHTML = '';
-                settingsApp.iconInput.value = settingsApp.icons[0];
-                settingsApp.icons.forEach((icon, i) => {
-                    const d = document.createElement('div');
-                    d.className = `icon-option ${i===0?'selected':''}`;
-                    d.innerHTML = `<i class="fas ${icon}"></i>`;
-                    d.onclick = () => {
-                        document.querySelectorAll('.icon-option').forEach(e => e.classList.remove('selected'));
-                        d.classList.add('selected');
-                        settingsApp.iconInput.value = icon;
-                    };
-                    settingsApp.grid.appendChild(d);
-                });
-            },
-            renderList: () => {
-                settingsApp.list.innerHTML = '';
-                const custom = brain.shortcuts.custom;
-                for (const [key, val] of Object.entries(custom)) {
-                    const d = document.createElement('div');
-                    d.className = 'flex justify-between items-center bg-black border border-neutral-800 p-2 rounded mb-2';
-                    d.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><i class="fas ${val.icon} text-neutral-500"></i><span class="text-sm text-purple-300">${val.name}</span></div><button onclick="settingsApp.remove('${key}')" class="text-neutral-600 hover:text-red-500"><i class="fas fa-times"></i></button>`;
-                    settingsApp.list.appendChild(d);
-                }
-            },
-            addShortcut: () => {
-                const n = document.getElementById('newShortName').value;
-                const u = document.getElementById('newShortUrl').value;
-                if(n && u) {
-                    brain.shortcuts.add(n, u, settingsApp.iconInput.value);
-                    document.getElementById('newShortName').value = '';
-                    document.getElementById('newShortUrl').value = '';
-                    settingsApp.renderList();
-                }
-            },
+            renderIcons: () => { settingsApp.grid.innerHTML = ''; settingsApp.iconInput.value = settingsApp.icons[0]; settingsApp.icons.forEach((icon, i) => { const d = document.createElement('div'); d.className = `icon-option ${i===0?'selected':''}`; d.innerHTML = `<i class="fas ${icon}"></i>`; d.onclick = () => { document.querySelectorAll('.icon-option').forEach(e => e.classList.remove('selected')); d.classList.add('selected'); settingsApp.iconInput.value = icon; }; settingsApp.grid.appendChild(d); }); },
+            renderList: () => { settingsApp.list.innerHTML = ''; const custom = brain.shortcuts.custom; for (const [key, val] of Object.entries(custom)) { const d = document.createElement('div'); d.className = 'flex justify-between items-center bg-black border border-neutral-800 p-2 rounded mb-2'; d.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><i class="fas ${val.icon} text-neutral-500"></i><span class="text-sm text-purple-300">${val.name}</span></div><button onclick="settingsApp.remove('${key}')" class="text-neutral-600 hover:text-red-500"><i class="fas fa-times"></i></button>`; settingsApp.list.appendChild(d); } },
+            addShortcut: () => { const n = document.getElementById('newShortName').value; const u = document.getElementById('newShortUrl').value; if(n && u) { brain.shortcuts.add(n, u, settingsApp.iconInput.value); document.getElementById('newShortName').value = ''; document.getElementById('newShortUrl').value = ''; settingsApp.renderList(); } },
             remove: (key) => { brain.shortcuts.remove(key); settingsApp.renderList(); }
         };
 
         const syncApp = {
-            manualSync: async (action) => {
+            forceSync: async () => {
                 const u = document.getElementById('syncUser').value.trim();
                 const p = document.getElementById('syncPass').value.trim();
                 const status = document.getElementById('modalSyncStatus');
-                
                 if(!u || !p) { status.innerText = "Enter credentials"; return; }
-                status.innerText = "Processing...";
-                
+                status.innerText = "Checking...";
                 localStorage.setItem(KEYS.CREDS, JSON.stringify({user: u, pass: p}));
-                const success = await Syncer.execute(action, u, p);
-                status.innerText = success ? (action==='login' ? "Synced!" : "Saved!") : "Error.";
+                // Manual Force Trigger
+                const success = await Syncer.executeSmartSync(u, p, false); // false = show indicator
+                status.innerText = success ? "Success!" : "Failed.";
                 status.className = success ? "text-green-500 text-xs text-center mt-2" : "text-red-500 text-xs text-center mt-2";
             }
         };
