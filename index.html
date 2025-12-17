@@ -2,462 +2,367 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>VORTEX PLATFORM</title>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+    <title>Spotlight</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #F4D03F; --accent: #00E5FF; --bg: #0f0f0f; --card: #1a1a1a; }
-        body { margin: 0; background: var(--bg); color: white; font-family: 'Kanit', sans-serif; overflow: hidden; }
+        :root { --brand: #FFE600; --bg: #111; --panel: #1a1a1a; --text: #fff; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Montserrat', sans-serif; overflow: hidden; }
         
-        /* --- LOBBY UI --- */
-        #lobby-layer { position: absolute; width: 100%; height: 100%; overflow-y: auto; background: var(--bg); }
+        /* UI LAYERS */
+        .layer { position: absolute; top:0; left:0; width:100%; height:100%; }
+        #lobby { z-index: 10; overflow-y: auto; background: var(--bg); }
+        #game-ui { z-index: 5; display: none; pointer-events: none; }
+        canvas { display: block; }
+
+        /* NAVBAR */
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(0,0,0,0.8); border-bottom: 2px solid var(--brand); position: sticky; top: 0; backdrop-filter: blur(10px); }
+        .logo { font-size: 2rem; font-weight: 900; color: var(--brand); letter-spacing: -1px; text-transform: uppercase; }
+        .btn { padding: 10px 20px; font-weight: 700; border: none; cursor: pointer; text-transform: uppercase; transition: 0.2s; font-family: inherit; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+        .btn-main { background: var(--brand); color: black; }
+        .btn-main:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(255, 230, 0, 0.4); }
+
+        /* CARDS */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; padding: 40px; max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--panel); border: 1px solid #333; border-radius: 5px; overflow: hidden; transition: 0.3s; }
+        .card:hover { border-color: var(--brand); transform: translateY(-5px); }
+        .thumb { height: 140px; background: #222; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: #444; font-weight: 900; }
+        .info { padding: 15px; }
         
-        /* Navbar */
-        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(20,20,20,0.95); border-bottom: 2px solid var(--primary); position: sticky; top: 0; z-index: 10; }
-        .logo { font-size: 2rem; font-style: italic; color: var(--primary); text-transform: uppercase; font-weight: 800; }
-        .nav-right { display: flex; gap: 15px; align-items: center; }
+        /* AUTH MODAL */
+        #auth-ui { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.95); z-index: 100; align-items: center; justify-content: center; }
+        .box { background: var(--panel); padding: 40px; border: 2px solid var(--brand); width: 300px; text-align: center; }
+        input { width: 90%; padding: 12px; margin: 10px 0; background: #222; border: 1px solid #444; color: white; font-family: inherit; }
         
-        .btn { padding: 10px 25px; border: none; font-weight: 800; text-transform: uppercase; cursor: pointer; transform: skew(-10deg); transition: 0.2s; text-decoration: none; display: inline-block; font-size: 1rem; }
-        .btn-primary { background: var(--primary); color: black; }
-        .btn-accent { background: var(--accent); color: black; }
-        .btn:hover { transform: skew(-10deg) scale(1.05); filter: brightness(1.1); }
-
-        /* User Bar */
-        #user-bar { display: none; align-items: center; gap: 10px; background: #222; padding: 5px 15px; border-radius: 5px; transform: skew(-10deg); border: 1px solid #444; }
-        #avatar-icon { width: 30px; height: 30px; background: #555; border-radius: 50%; border: 2px solid white; }
-
-        /* Map Grid */
-        .hero { text-align: center; padding: 60px 20px; background: radial-gradient(circle, #2a2a2a 0%, #0f0f0f 70%); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; padding: 40px; max-width: 1200px; margin: 0 auto; }
-        
-        .card { background: var(--card); border: 1px solid #333; border-radius: 10px; overflow: hidden; transition: 0.3s; position: relative; }
-        .card:hover { transform: translateY(-10px); border-color: var(--accent); box-shadow: 0 0 20px rgba(0, 229, 255, 0.2); }
-        .card-img { height: 160px; background: #252525; display: flex; align-items: center; justify-content: center; color: #444; font-size: 4rem; }
-        .card-content { padding: 15px; }
-        .card h3 { margin: 0; font-size: 1.4rem; color: white; }
-        .card p { color: #888; font-size: 0.9rem; margin: 5px 0 15px 0; }
-        .play-btn { width: 100%; background: var(--accent); border: none; padding: 10px; font-weight: 800; cursor: pointer; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
-
-        /* --- MODALS --- */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; }
-        .modal-box { background: #1a1a1a; padding: 40px; border-radius: 10px; border: 2px solid var(--primary); width: 350px; text-align: center; }
-        .modal-box input { width: 90%; padding: 12px; margin: 10px 0; background: #333; border: 1px solid #555; color: white; font-family: 'Kanit'; }
-
-        /* Avatar Editor */
-        #editor-ui { display: none; position: absolute; top:0; left:0; width:100%; height:100%; background: #111; z-index: 50; flex-direction: row; }
-        #editor-canvas { flex: 2; background: radial-gradient(#333, #000); }
-        #editor-sidebar { flex: 1; background: #1a1a1a; padding: 20px; border-left: 2px solid var(--primary); display: flex; flex-direction: column; gap: 10px; }
-        .part-btn { background: #333; color: white; border: 1px solid #555; padding: 10px; cursor: pointer; text-align: left; transition: 0.2s; }
-        .part-btn:hover { border-color: var(--accent); background: #222; }
-
-        /* --- GAME HUD --- */
-        #game-layer { display: none; position: absolute; width: 100%; height: 100%; }
-        #game-canvas { display: block; width: 100%; height: 100%; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-        #exit-btn { position: absolute; top: 20px; right: 20px; background: red; color: white; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; display: none; }
+        /* EDITOR */
+        #editor-ui { display: none; z-index: 50; background: #111; flex-direction: row; }
+        #ed-canvas { flex: 2; }
+        #ed-sidebar { flex: 1; padding: 20px; background: var(--panel); border-left: 2px solid var(--brand); display: flex; flex-direction: column; gap: 10px; }
     </style>
 </head>
 <body>
 
     <!-- LOBBY -->
-    <div id="lobby-layer">
+    <div id="lobby" class="layer">
         <nav>
-            <div class="logo">VORTEX</div>
-            <div class="nav-right">
-                <div id="user-bar">
-                    <div id="avatar-icon"></div>
-                    <div>
-                        <div id="u-name" style="font-size:0.9rem; line-height:1;">Guest</div>
-                        <div id="u-credits" style="font-size:0.7rem; color:var(--primary);">0 V-Bux</div>
-                    </div>
+            <div class="logo">SPOTLIGHT</div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div id="user-bar" style="display:none; align-items:center; gap:10px;">
+                    <div id="u-av" style="width:30px; height:30px; border-radius:50%; background:#fff; border:2px solid #fff;"></div>
+                    <span id="u-name" style="font-weight:bold;">User</span>
                 </div>
-                <button class="btn btn-primary" onclick="openLogin()" id="login-btn">LOGIN</button>
-                <button class="btn btn-accent" onclick="openEditor()" id="edit-btn" style="display:none;">AVATAR</button>
-                <a href="studio.html" class="btn btn-primary" style="background: white;">CREATE</a>
+                <button class="btn btn-main" onclick="showAuth()" id="btn-login">LOGIN</button>
+                <button class="btn btn-main" onclick="showEditor()" id="btn-av" style="display:none; background:#fff;">AVATAR</button>
+                <a href="studio.html"><button class="btn btn-main">CREATE</button></a>
             </div>
         </nav>
-
-        <div class="hero">
-            <h1>FEATURED MAPS</h1>
+        
+        <div style="text-align:center; padding: 60px 20px;">
+            <h1 style="font-size: 3rem; margin:0;">PLAY & CREATE</h1>
+            <p style="color:#888;">3rd Person • Multiplayer Platform • Spotlight Engine</p>
         </div>
 
-        <div class="grid" id="map-grid">
-            <p>Connecting to Spreadsheet...</p>
-        </div>
+        <div class="grid" id="map-grid">Loading from Google Sheets...</div>
     </div>
 
-    <!-- LOGIN MODAL -->
-    <div id="auth-modal" class="modal">
-        <div class="modal-box">
-            <h2 id="auth-title">LOGIN</h2>
-            <input type="text" id="username" placeholder="Username">
-            <input type="password" id="password" placeholder="Password">
-            <button class="btn btn-primary" style="width:100%" onclick="handleAuth()">SUBMIT</button>
-            <p style="font-size: 0.8rem; color: #888; cursor: pointer;" onclick="toggleReg()">Switch to Register / Login</p>
+    <!-- AUTH MODAL -->
+    <div id="auth-ui">
+        <div class="box">
+            <h2 id="auth-head">LOGIN</h2>
+            <input type="text" id="au-user" placeholder="Username">
+            <input type="password" id="au-pass" placeholder="Password">
+            <button class="btn btn-main" style="width:100%" onclick="doAuth()">SUBMIT</button>
+            <p style="font-size:0.8rem; color:#888; cursor:pointer; margin-top:15px;" onclick="toggleAuth()">No account? Register</p>
+            <p id="auth-msg" style="color:var(--brand); font-size:0.8rem;"></p>
         </div>
     </div>
 
     <!-- AVATAR EDITOR -->
-    <div id="editor-ui">
-        <div id="editor-canvas"></div>
-        <div id="editor-sidebar">
+    <div id="editor-ui" class="layer">
+        <div id="ed-canvas"></div>
+        <div id="ed-sidebar">
             <h2>CUSTOMIZE</h2>
-            <p>Colors</p>
-            <button class="part-btn" onclick="setAvatarColor('red')">Red Team</button>
-            <button class="part-btn" onclick="setAvatarColor('blue')">Blue Team</button>
-            <button class="part-btn" onclick="setAvatarColor('green')">Green Team</button>
-            <p>Hats</p>
-            <button class="part-btn" onclick="setAvatarHat('none')">No Hat</button>
-            <button class="part-btn" onclick="setAvatarHat('tophat')">Top Hat</button>
-            <button class="part-btn" onclick="setAvatarHat('blockhead')">Block Head</button>
-            <div style="margin-top:auto;">
-                <button class="btn btn-accent" style="width:100%" onclick="saveAvatar()">SAVE & EXIT</button>
-            </div>
+            <button class="btn" style="background:#333; color:white;" onclick="setAvColor('#ff0000')">Red</button>
+            <button class="btn" style="background:#333; color:white;" onclick="setAvColor('#0088ff')">Blue</button>
+            <button class="btn" style="background:#333; color:white;" onclick="setAvColor('#00ff00')">Green</button>
+            <button class="btn" style="background:#333; color:white;" onclick="setAvColor('#ffff00')">Yellow</button>
+            <button class="btn" style="background:#333; color:white;" onclick="setAvColor('#ffffff')">White</button>
+            <button class="btn btn-main" style="margin-top:auto;" onclick="saveAvatar()">SAVE & EXIT</button>
         </div>
     </div>
 
-    <!-- GAME LAYER -->
-    <div id="game-layer">
-        <canvas id="game-canvas"></canvas>
-        <div id="crosshair"></div>
-        <button id="exit-btn" onclick="exitGame()">EXIT</button>
+    <!-- GAME UI -->
+    <canvas id="game-canvas" class="layer" style="display:none;"></canvas>
+    <div id="game-ui" class="layer">
+        <div style="position:absolute; bottom:20px; left:20px; color:rgba(255,255,255,0.5);">WASD to Move • Mouse to Look • SPACE Jump</div>
+        <button onclick="exitGame()" style="pointer-events:all; position:absolute; top:20px; right:20px; background:red; border:none; padding:10px 20px; color:white; font-weight:bold; cursor:pointer;">EXIT</button>
     </div>
 
     <!-- SCRIPTS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
-
+    
     <script>
         // === CONFIGURATION ===
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwRtQWIwlGkYowV-qD4rRn6Zz1AzZpvyGF7CyynEvDyfdXhCWGIb_E8UqoABgHLs6bN/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbykgoDaT5pKCxI7FfQE59lcPYt6MAgLNioWZrlot2mxG2uZsJ8BBtVUzjW6BSrK4ueq/exec";
         const TSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTIfH1AYbqKA0pAuETV7LqbsPfjPqAMLCm9en8kS42Z9pg1eifjfLST8OTuAtszS7ZAXfwkAIBKAJY9/pub?output=tsv";
 
         // === STATE ===
-        let currentUser = null;
-        let myAvatar = { color: "#ffffff", hat: "none" };
-        let isRegistering = false;
+        let user = null, avatar = {color:"#ff0000"}, isReg = false;
 
-        // === 1. LOBBY SYSTEM ===
-        
-        // Fetch Maps from Read-Only TSV (Super Fast)
-        fetch(TSV_URL)
-            .then(res => res.text())
-            .then(text => {
-                const grid = document.getElementById("map-grid");
-                grid.innerHTML = "";
-                const rows = text.split("\n");
-                
-                // Skip row 0 if it's headers
-                rows.forEach((row, index) => {
-                    if(index === 0 && row.includes("MapID")) return;
-                    if(!row.trim()) return;
-
-                    const cols = row.split("\t");
-                    if(cols.length < 3) return;
-
-                    const id = cols[0];
-                    let header = {}, body = {};
-                    
-                    try { header = JSON.parse(cols[1]); } catch(e) { header = {name:"Error", creator:"Unknown"}; }
-                    try { body = JSON.parse(cols[2]); } catch(e) {}
-
-                    // Store body in button for click
-                    const safeBody = encodeURIComponent(JSON.stringify(body));
-
-                    const card = document.createElement("div");
-                    card.className = "card";
-                    card.innerHTML = `
-                        <div class="card-img"></div>
-                        <div class="card-content">
-                            <h3>${header.name || "Untitled"}</h3>
-                            <p>By ${header.creator || "Anonymous"}</p>
-                            <button class="play-btn" onclick="launchGame('${safeBody}')">PLAY</button>
-                        </div>
-                    `;
-                    grid.appendChild(card);
-                });
-            });
-
-        // === 2. AUTH SYSTEM ===
-        function openLogin() { document.getElementById("auth-modal").style.display = "flex"; }
-        function toggleReg() { 
-            isRegistering = !isRegistering; 
-            document.getElementById("auth-title").innerText = isRegistering ? "REGISTER" : "LOGIN"; 
-        }
-
-        function handleAuth() {
-            const u = document.getElementById("username").value;
-            const p = document.getElementById("password").value;
-            if(!u || !p) return alert("Enter details");
-
-            // Use Web App URL for Logic
-            const action = isRegistering ? "register" : "login";
+        // === 1. LOBBY & MAPS (TSV INTEGRATION) ===
+        fetch(TSV_URL).then(r=>r.text()).then(t => {
+            const g = document.getElementById("map-grid");
+            g.innerHTML = "";
+            const rows = t.split("\n");
             
-            // For Login, we use GET to read response easily
-            // For Register, we use POST
-            if(action === "login") {
-                fetch(`${WEB_APP_URL}?action=login&username=${u}&password=${p}`)
-                .then(res => res.json())
-                .then(data => {
-                    if(data.status === "success") {
-                        loginSuccess(u, data.avatar, data.stats);
-                    } else {
-                        alert("Login Failed");
-                    }
-                });
-            } else {
+            // Loop through rows (skip first if it's header "MapID")
+            for(let i=0; i<rows.length; i++) {
+                const row = rows[i];
+                if(!row.trim()) continue;
+                if(i === 0 && row.toLowerCase().includes("mapid")) continue; // Skip header row
+                
+                const c = row.split("\t");
+                if(c.length < 3) continue;
+
+                // Parse JSON columns
+                let h = {name:"Untitled", creator:"Unknown"};
+                try { h = JSON.parse(c[1]); } catch(e){}
+                
+                let b = c[2]; // Body string (Map Data)
+
+                const d = document.createElement("div");
+                d.className = "card";
+                d.innerHTML = `
+                    <div class="thumb"></div>
+                    <div class="info">
+                        <h3>${h.name}</h3>
+                        <div style="color:#666; font-size:0.8rem;">By ${h.creator}</div>
+                        <button class="btn btn-main" style="width:100%; margin-top:10px;" onclick="loadGame('${encodeURIComponent(b)}')">PLAY</button>
+                    </div>`;
+                g.appendChild(d);
+            }
+            if(g.innerHTML === "") g.innerHTML = "<p>No maps found yet. Create one in Studio!</p>";
+        }).catch(e => {
+            console.error(e);
+            document.getElementById("map-grid").innerHTML = "Error loading maps.";
+        });
+
+        // === 2. AUTHENTICATION ===
+        const showAuth = () => document.getElementById("auth-ui").style.display = "flex";
+        const toggleAuth = () => { isReg = !isReg; document.getElementById("auth-head").innerText = isReg?"REGISTER":"LOGIN"; document.getElementById("auth-msg").innerText = ""; };
+        
+        function doAuth() {
+            const u = document.getElementById("au-user").value;
+            const p = document.getElementById("au-pass").value;
+            const msg = document.getElementById("auth-msg");
+            if(!u || !p) return;
+
+            msg.innerText = "Processing...";
+
+            if(isReg) {
+                // REGISTER FLOW (Robust no-cors)
                 fetch(WEB_APP_URL, {
                     method: "POST", mode: "no-cors",
                     body: JSON.stringify({ action: "register", username: u, password: p })
                 }).then(() => {
-                    alert("Registration Sent! Try logging in.");
-                    toggleReg();
+                    // Success assumed (no-cors prevents reading actual response)
+                    msg.innerText = "Account created! Redirecting to login...";
+                    setTimeout(() => {
+                        toggleAuth(); 
+                        document.getElementById("au-user").value = u;
+                        document.getElementById("au-pass").value = "";
+                        msg.innerText = "";
+                    }, 1500);
+                }).catch(e => msg.innerText = "Connection Error");
+            } else {
+                // LOGIN FLOW (GET request)
+                fetch(`${WEB_APP_URL}?action=login&username=${u}&password=${p}`)
+                .then(r=>r.json()).then(d => {
+                    if(d.status === "success") {
+                        user = u; avatar = d.avatar;
+                        document.getElementById("auth-ui").style.display = "none";
+                        document.getElementById("btn-login").style.display = "none";
+                        document.getElementById("user-bar").style.display = "flex";
+                        document.getElementById("btn-av").style.display = "inline-block";
+                        document.getElementById("u-name").innerText = u;
+                        document.getElementById("u-av").style.background = avatar.color;
+                    } else {
+                        msg.innerText = "Invalid Username or Password";
+                    }
                 });
             }
         }
 
-        function loginSuccess(user, avatar, stats) {
-            currentUser = user;
-            myAvatar = avatar;
-            
-            document.getElementById("auth-modal").style.display = "none";
-            document.getElementById("login-btn").style.display = "none";
-            document.getElementById("edit-btn").style.display = "inline-block";
-            document.getElementById("user-bar").style.display = "flex";
-            
-            document.getElementById("u-name").innerText = user;
-            document.getElementById("u-credits").innerText = (stats.credits || 0) + " V-Bux";
-            document.getElementById("avatar-icon").style.backgroundColor = avatar.color || "#fff";
-        }
-
         // === 3. AVATAR EDITOR ===
-        let editorScene, editorRenderer, editorMesh, editorHat;
-        
-        function openEditor() {
-            document.getElementById("lobby-layer").style.display = "none";
-            document.getElementById("editor-ui").style.display = "flex";
-            initEditor3D();
+        let edSc, edRen, edMesh;
+        function showEditor() {
+            document.getElementById("lobby").style.display="none";
+            document.getElementById("editor-ui").style.display="flex";
+            if(!edSc) initEd();
         }
-
-        function initEditor3D() {
-            if(editorScene) return;
-            const container = document.getElementById("editor-canvas");
-            editorScene = new THREE.Scene();
-            
-            const cam = new THREE.PerspectiveCamera(50, container.offsetWidth/container.offsetHeight, 0.1, 100);
+        function initEd() {
+            const c = document.getElementById("ed-canvas");
+            edSc = new THREE.Scene(); edSc.background = new THREE.Color(0x222);
+            const cam = new THREE.PerspectiveCamera(50, c.offsetWidth/c.offsetHeight, 0.1, 100);
             cam.position.set(0, 1, 3);
+            edRen = new THREE.WebGLRenderer({antialias:true});
+            edRen.setSize(c.offsetWidth, c.offsetHeight);
+            c.appendChild(edRen.domElement);
+            edSc.add(new THREE.AmbientLight(0xffffff,0.8));
             
-            editorRenderer = new THREE.WebGLRenderer({alpha:true});
-            editorRenderer.setSize(container.offsetWidth, container.offsetHeight);
-            container.appendChild(editorRenderer.domElement);
+            const geo = new THREE.BoxGeometry(0.5,0.8,0.3);
+            edMesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color: avatar.color}));
+            edSc.add(edMesh);
             
-            // Light
-            editorScene.add(new THREE.AmbientLight(0xffffff, 0.5));
-            const dl = new THREE.DirectionalLight(0xffffff, 1);
-            dl.position.set(2, 2, 2);
-            editorScene.add(dl);
-
-            // Dummy Char
-            editorMesh = new THREE.Group();
-            
-            const mat = new THREE.MeshLambertMaterial({color: myAvatar.color});
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.3), mat);
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({color: 0xffccaa}));
-            head.position.y = 0.5;
-            
-            // Hat Group
-            editorHat = new THREE.Group();
-            editorHat.position.y = 0.7;
-            
-            editorMesh.add(body);
-            editorMesh.add(head);
-            editorMesh.add(editorHat);
-            editorScene.add(editorMesh);
-
-            // Apply current settings
-            updateEditorVisuals();
-
-            function animate() {
-                requestAnimationFrame(animate);
-                editorMesh.rotation.y += 0.01;
-                editorRenderer.render(editorScene, cam);
-            }
-            animate();
+            function ani() { requestAnimationFrame(ani); edMesh.rotation.y+=0.01; edRen.render(edSc, cam); }
+            ani();
         }
-
-        function updateEditorVisuals() {
-            // Update Body Color
-            editorMesh.children[0].material.color.set(myAvatar.color);
-            
-            // Update Hat
-            editorHat.clear();
-            if(myAvatar.hat === 'tophat') {
-                const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.4, 32), new THREE.MeshLambertMaterial({color:0x111}));
-                editorHat.add(cyl);
-            } else if (myAvatar.hat === 'blockhead') {
-                const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshLambertMaterial({color:0x555}));
-                editorHat.add(box);
-            }
-        }
-
-        function setAvatarColor(c) { myAvatar.color = c; updateEditorVisuals(); }
-        function setAvatarHat(h) { myAvatar.hat = h; updateEditorVisuals(); }
-
+        function setAvColor(c) { avatar.color = c; edMesh.material.color.set(c); }
         function saveAvatar() {
-            // Save to Cloud
             fetch(WEB_APP_URL, {
-                method: "POST", mode: "no-cors",
-                body: JSON.stringify({
-                    action: "updateAvatar",
-                    username: currentUser,
-                    avatarData: myAvatar
-                })
-            }).then(() => {
-                document.getElementById("editor-ui").style.display = "none";
-                document.getElementById("lobby-layer").style.display = "block";
-                document.getElementById("avatar-icon").style.backgroundColor = myAvatar.color;
+                method:"POST", mode:"no-cors",
+                body: JSON.stringify({action:"updateAvatar", username:user, avatarData:avatar})
             });
+            document.getElementById("editor-ui").style.display="none";
+            document.getElementById("lobby").style.display="block";
+            document.getElementById("u-av").style.background = avatar.color;
         }
 
+        // === 4. 3RD PERSON GAME ENGINE ===
+        let scene, camera, renderer, player, cameraBoom;
+        let isPlaying = false;
+        let yaw = 0, pitch = 0;
+        let move = {f:false, b:false, l:false, r:false};
+        let velocity = new THREE.Vector3();
 
-        // === 4. GAME ENGINE ===
-        let scene, camera, renderer, controls, isPlaying = false;
-        
-        function launchGame(jsonString) {
-            const mapData = JSON.parse(decodeURIComponent(jsonString));
+        function loadGame(dataStr) {
+            const data = JSON.parse(decodeURIComponent(dataStr));
+            document.getElementById("lobby").style.display="none";
+            document.getElementById("game-canvas").style.display="block";
+            document.getElementById("game-ui").style.display="block";
             
-            document.getElementById("lobby-layer").style.display = "none";
-            document.getElementById("game-layer").style.display = "block";
+            if(!renderer) initGame();
             
-            if(!renderer) initGameEngine();
-            loadMap(mapData);
-            
-            isPlaying = true;
-            controls.lock();
-            document.getElementById("exit-btn").style.display = "none"; // Hide initially
-            animateGame();
-        }
-
-        function initGameEngine() {
-            const canvas = document.getElementById("game-canvas");
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            controls = new THREE.PointerLockControls(camera, document.body);
-            
-            controls.addEventListener('unlock', () => {
-                if(isPlaying) document.getElementById("exit-btn").style.display = "block";
-            });
-            controls.addEventListener('lock', () => {
-                 document.getElementById("exit-btn").style.display = "none";
-            });
-
-            // Movement Listeners
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-        }
-
-        function loadMap(data) {
-            // Reset
+            // Build Map
             scene.clear();
-            
-            // Sky
             scene.background = new THREE.Color(data.skyColor || "#87CEEB");
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const dl = new THREE.DirectionalLight(0xffffff, 0.8);
+            dl.position.set(20,50,20); scene.add(dl);
             
-            // Lights
-            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-            const dl = new THREE.DirectionalLight(0xffffff, 0.6);
-            dl.position.set(10,20,10);
-            scene.add(dl);
-
             // Floor
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(100,100), new THREE.MeshLambertMaterial({color:0x222}));
-            floor.rotation.x = -Math.PI/2;
-            scene.add(floor);
-
+            const fl = new THREE.Mesh(new THREE.PlaneGeometry(100,100), new THREE.MeshLambertMaterial({color:0x333}));
+            fl.rotation.x = -Math.PI/2; scene.add(fl);
+            
             // Blocks
             if(data.blocks) {
                 const geo = new THREE.BoxGeometry(1,1,1);
-                const chunks = data.blocks.split("|");
-                chunks.forEach(chunk => {
-                    const [x,y,z,col] = chunk.split(",");
-                    if(x && y && z) {
-                        const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color: parseInt(col)}));
-                        mesh.position.set(parseFloat(x), parseFloat(y), parseFloat(z));
-                        scene.add(mesh);
+                data.blocks.split("|").forEach(b => {
+                    const [x,y,z,c] = b.split(",");
+                    if(c) {
+                        const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color:parseInt(c)}));
+                        m.position.set(parseFloat(x),parseFloat(y),parseFloat(z));
+                        scene.add(m);
                     }
                 });
             }
 
-            // Spawn
-            const s = data.spawn || {x:0, y:2, z:0};
-            camera.position.set(s.x, s.y, s.z);
+            // Player Setup (3rd Person)
+            const pGeo = new THREE.BoxGeometry(0.6, 1.8, 0.4);
+            const pMat = new THREE.MeshLambertMaterial({color: avatar.color});
+            player = new THREE.Mesh(pGeo, pMat);
+            player.position.set(0,2,0);
+            scene.add(player);
+
+            // Camera Boom (Invisible pivot)
+            cameraBoom = new THREE.Object3D();
+            cameraBoom.position.copy(player.position);
+            scene.add(cameraBoom);
+            
+            isPlaying = true;
+            document.body.requestPointerLock();
+            animateGame();
         }
 
-        // Physics vars
-        const velocity = new THREE.Vector3();
-        const direction = new THREE.Vector3();
-        let moveF=false, moveB=false, moveL=false, moveR=false, canJump=false;
-        let prevTime = performance.now();
-
-        function onKeyDown(e) {
-            switch(e.code) {
-                case 'KeyW': moveF = true; break;
-                case 'KeyS': moveB = true; break;
-                case 'KeyA': moveL = true; break;
-                case 'KeyD': moveR = true; break;
-                case 'Space': if(canJump) { velocity.y += 15; canJump = false; } break;
-            }
-        }
-        function onKeyUp(e) {
-             switch(e.code) {
-                case 'KeyW': moveF = false; break;
-                case 'KeyS': moveB = false; break;
-                case 'KeyA': moveL = false; break;
-                case 'KeyD': moveR = false; break;
-            }
+        function initGame() {
+            const cvs = document.getElementById("game-canvas");
+            renderer = new THREE.WebGLRenderer({canvas:cvs, antialias:true});
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
+            
+            // Mouse Look
+            document.addEventListener('mousemove', e => {
+                if(document.pointerLockElement === document.body) {
+                    yaw -= e.movementX * 0.002;
+                    pitch -= e.movementY * 0.002;
+                    pitch = Math.max(-1, Math.min(1, pitch)); // Clamp Vertical look
+                }
+            });
+            // Keys
+            document.addEventListener('keydown', e => {
+                if(e.code==='KeyW') move.f=true;
+                if(e.code==='KeyS') move.b=true;
+                if(e.code==='KeyA') move.l=true;
+                if(e.code==='KeyD') move.r=true;
+                if(e.code==='Space' && player.position.y <= 1.0) velocity.y = 0.3;
+            });
+            document.addEventListener('keyup', e => {
+                if(e.code==='KeyW') move.f=false;
+                if(e.code==='KeyS') move.b=false;
+                if(e.code==='KeyA') move.l=false;
+                if(e.code==='KeyD') move.r=false;
+            });
+            // Click to lock
+            cvs.onclick = () => document.body.requestPointerLock();
         }
 
         function animateGame() {
             if(!isPlaying) return;
             requestAnimationFrame(animateGame);
 
-            if(controls.isLocked) {
-                const time = performance.now();
-                const delta = (time - prevTime) / 1000;
+            // Gravity
+            velocity.y -= 0.01;
+            player.position.y += velocity.y;
+            if(player.position.y < 0.9) { player.position.y = 0.9; velocity.y = 0; }
 
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
-                velocity.y -= 9.8 * 3.0 * delta;
+            // Movement logic relative to Camera Yaw
+            const speed = 0.15;
+            const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+            const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
 
-                direction.z = Number(moveF) - Number(moveB);
-                direction.x = Number(moveR) - Number(moveL);
-                direction.normalize();
+            if(move.f) player.position.add(forward.multiplyScalar(speed));
+            if(move.b) player.position.add(forward.multiplyScalar(-speed));
+            if(move.l) player.position.add(right.multiplyScalar(-speed));
+            if(move.r) player.position.add(right.multiplyScalar(speed));
 
-                if (moveF || moveB) velocity.z -= direction.z * 100.0 * delta;
-                if (moveL || moveR) velocity.x -= direction.x * 100.0 * delta;
+            // Camera Boom Update
+            cameraBoom.position.copy(player.position);
+            cameraBoom.position.y += 1.5; // Eye height
 
-                controls.moveRight(-velocity.x * delta);
-                controls.moveForward(-velocity.z * delta);
-                camera.position.y += velocity.y * delta;
+            // Orbit Logic
+            const dist = 5;
+            const hDist = dist * Math.cos(pitch);
+            const vDist = dist * Math.sin(pitch);
+            
+            camera.position.x = cameraBoom.position.x - (hDist * Math.sin(yaw));
+            camera.position.z = cameraBoom.position.z - (hDist * Math.cos(yaw));
+            camera.position.y = cameraBoom.position.y + vDist;
+            
+            camera.lookAt(cameraBoom.position);
 
-                if (camera.position.y < 2) {
-                    velocity.y = 0;
-                    camera.position.y = 2;
-                    canJump = true;
-                }
-            }
-            prevTime = performance.now();
+            // Optional: Rotate player mesh to face movement direction could go here
+            player.rotation.y = yaw; 
+
             renderer.render(scene, camera);
         }
 
         function exitGame() {
             isPlaying = false;
-            controls.unlock();
-            document.getElementById("game-layer").style.display = "none";
-            document.getElementById("lobby-layer").style.display = "block";
+            document.exitPointerLock();
+            document.getElementById("game-canvas").style.display="none";
+            document.getElementById("game-ui").style.display="none";
+            document.getElementById("lobby").style.display="block";
         }
-
     </script>
 </body>
 </html>
