@@ -25,12 +25,9 @@
     <input id="mName" placeholder="Map Name">
     <label>Sky Color</label>
     <input type="color" id="mSky" value="#87CEEB">
-    
-    <label>Block Palette</label>
     <div id="pal"></div>
-    
     <div style="margin-top:auto">
-        <p style="font-size:0.8rem; color:#666;">Left Click: Place<br>Right Click: Rotate<br>Shift + Click: Delete</p>
+        <p style="font-size:0.8rem; color:#666;">Left Click: Place<br>Right Click: Rotate Cam<br>Shift + Left Click: Delete</p>
         <button onclick="publish()">PUBLISH MAP</button>
     </div>
 </div>
@@ -39,140 +36,82 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-    // === AUTH CHECK ===
     const user = localStorage.getItem("sp_user");
-    if(!user) {
-        alert("You must be logged in to access Studio.");
-        window.location.href = "index.html";
-    }
+    if(!user) { alert("Login required."); window.location.href="index.html"; }
     document.getElementById("creator-display").innerText = "Creator: " + user;
 
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbykgoDaT5pKCxI7FfQE59lcPYt6MAgLNioWZrlot2mxG2uZsJ8BBtVUzjW6BSrK4ueq/exec";
     
-    // Scene
     const scene = new THREE.Scene(); scene.background = new THREE.Color(0x222);
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
     camera.position.set(10,10,10);
     const renderer = new THREE.WebGLRenderer(); renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
     
-    // Controls
+    // Controls: LEFT CLICK DOES NOTHING TO CAM, RIGHT CLICK ROTATES
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }; // Remap for easier editing
-
-    // Environment
+    controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }; 
+    
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(5,10,5); scene.add(dl);
-    
-    const grid = new THREE.GridHelper(50,50);
-    scene.add(grid);
-    
+    scene.add(new THREE.GridHelper(50,50));
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(50,50), new THREE.MeshBasicMaterial({visible:false}));
-    plane.rotation.x = -Math.PI/2; 
-    scene.add(plane);
+    plane.rotation.x = -Math.PI/2; scene.add(plane);
 
-    // Block Logic
     let blocks = {};
     let col = 0xff0000;
     const colors = [0xffffff, 0x555555, 0x111111, 0x8B4513, 0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
     
     const pal = document.getElementById("pal");
     colors.forEach(c => {
-        const d = document.createElement("div");
-        d.className = "swatch"; d.style.background = "#"+c.toString(16).padStart(6,'0');
+        const d = document.createElement("div"); d.className = "swatch"; d.style.background = "#"+c.toString(16).padStart(6,'0');
         d.onclick = () => { col = c; document.querySelectorAll(".swatch").forEach(s=>s.classList.remove("active")); d.classList.add("active"); };
         pal.appendChild(d);
     });
 
-    // Interaction Variables
-    const ray = new THREE.Raycaster(); 
-    const mouse = new THREE.Vector2();
+    const ray = new THREE.Raycaster(); const mouse = new THREE.Vector2();
     const ghost = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshBasicMaterial({color:0x00ffff, opacity:0.5, transparent:true}));
     scene.add(ghost);
 
-    let isDragging = false;
-    let mouseDownTime = 0;
-
     document.addEventListener('mousemove', e => {
-        isDragging = true;
-        mouse.x = (e.clientX/window.innerWidth)*2-1; 
-        mouse.y = -(e.clientY/window.innerHeight)*2+1;
-        
+        mouse.x = (e.clientX/window.innerWidth)*2-1; mouse.y = -(e.clientY/window.innerHeight)*2+1;
         ray.setFromCamera(mouse, camera);
-        const intersects = ray.intersectObjects([plane, ...Object.values(scene.children).filter(c => c.geometry && c.geometry.type === 'BoxGeometry' && c !== ghost)]);
-        
+        const intersects = ray.intersectObjects([plane, ...Object.values(scene.children).filter(c=>c.geometry?.type==='BoxGeometry' && c!==ghost)]);
         if(intersects.length > 0) {
             const i = intersects[0];
             const p = i.point.clone().add(i.face.normal.clone().multiplyScalar(0.5)).floor().addScalar(0.5);
-            ghost.position.copy(p);
-            ghost.visible = true;
-        } else {
-            ghost.visible = false;
-        }
+            ghost.position.copy(p); ghost.visible = true;
+        } else { ghost.visible = false; }
     });
 
-    document.addEventListener('mousedown', () => { 
-        isDragging = false; 
-        mouseDownTime = Date.now();
-    });
-
-    document.addEventListener('mouseup', e => {
-        // Prevent placement if dragging camera or clicking toolbar
-        if(Date.now() - mouseDownTime > 200) return; // Considered a drag
-        if(e.target.closest("#toolbar")) return;
-        
-        // Left click only (0)
-        if(e.button !== 0) return;
-
+    document.addEventListener('mousedown', e => {
+        if(e.button !== 0 || e.target.closest("#toolbar")) return; // Only Left Click
         ray.setFromCamera(mouse, camera);
-        const intersects = ray.intersectObjects([plane, ...Object.values(scene.children).filter(c => c.geometry && c.geometry.type === 'BoxGeometry' && c !== ghost)]);
-        
+        const intersects = ray.intersectObjects([plane, ...Object.values(scene.children).filter(c=>c.geometry?.type==='BoxGeometry' && c!==ghost)]);
         if(intersects.length > 0) {
             const i = intersects[0];
-            
             if(e.shiftKey) {
-                // DELETE
-                if(i.object !== plane) {
-                    scene.remove(i.object);
-                    delete blocks[`${i.object.position.x},${i.object.position.y},${i.object.position.z}`];
-                }
+                if(i.object!==plane) { scene.remove(i.object); delete blocks[`${i.object.position.x},${i.object.position.y},${i.object.position.z}`]; }
             } else {
-                // PLACE
                 const p = i.point.clone().add(i.face.normal.clone().multiplyScalar(0.5)).floor().addScalar(0.5);
-                
-                // Prevent duplicate
-                const key = `${p.x},${p.y},${p.z}`;
-                if(blocks[key]) return; 
-
-                const m = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshLambertMaterial({color:col}));
-                m.position.copy(p);
-                scene.add(m);
-                blocks[key] = col;
+                const k = `${p.x},${p.y},${p.z}`;
+                if(!blocks[k]) {
+                    const m = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshLambertMaterial({color:col}));
+                    m.position.copy(p); scene.add(m); blocks[k] = col;
+                }
             }
         }
     });
 
     function publish() {
         const name = document.getElementById("mName").value;
-        if(!name) return alert("Map Name required");
-        if(Object.keys(blocks).length === 0) return alert("Build something first!");
-        
+        if(!name) return alert("Enter Name");
+        if(Object.keys(blocks).length===0) return alert("Empty Map");
         const bStr = Object.entries(blocks).map(([k,v]) => `${k},${v}`).join("|");
-        
         fetch(WEB_APP_URL, {
             method: "POST", mode: "no-cors",
-            body: JSON.stringify({
-                action: "saveMap", 
-                name: name, 
-                creator: user,  // Uses local storage user
-                skyColor: document.getElementById("mSky").value, 
-                mapData: bStr
-            })
-        }).then(() => {
-            alert("Map Published Successfully!");
-            window.location.href = "index.html";
-        });
+            body: JSON.stringify({ action: "saveMap", name: name, creator: user, skyColor: document.getElementById("mSky").value, mapData: bStr })
+        }).then(() => { alert("Published!"); window.location.href = "index.html"; });
     }
 
     function ani(){ requestAnimationFrame(ani); controls.update(); renderer.render(scene, camera); }
