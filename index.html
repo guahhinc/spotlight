@@ -8,15 +8,15 @@
         :root { --brand: #FFE600; --bg: #111; --panel: #1a1a1a; --text: #fff; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Montserrat', sans-serif; overflow: hidden; }
         
-        /* UI LAYERS */
+        /* LAYOUT */
         .layer { position: absolute; top:0; left:0; width:100%; height:100%; }
         #lobby { z-index: 10; overflow-y: auto; background: var(--bg); }
         #game-ui { z-index: 5; display: none; pointer-events: none; }
         canvas { display: block; }
 
-        /* NAVBAR */
-        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(0,0,0,0.8); border-bottom: 2px solid var(--brand); position: sticky; top: 0; backdrop-filter: blur(10px); }
-        .logo { font-size: 2rem; font-weight: 900; color: var(--brand); letter-spacing: -1px; text-transform: uppercase; }
+        /* NAV & UI */
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(0,0,0,0.9); border-bottom: 2px solid var(--brand); position: sticky; top: 0; }
+        .logo { font-size: 2rem; font-weight: 900; color: var(--brand); letter-spacing: -1px; }
         .btn { padding: 10px 20px; font-weight: 700; border: none; cursor: pointer; text-transform: uppercase; transition: 0.2s; font-family: inherit; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
         .btn-main { background: var(--brand); color: black; }
         .btn-main:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(255, 230, 0, 0.4); }
@@ -28,7 +28,7 @@
         .thumb { height: 140px; background: #222; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: #444; font-weight: 900; }
         .info { padding: 15px; }
         
-        /* AUTH MODAL */
+        /* MODALS */
         #auth-ui { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.95); z-index: 100; align-items: center; justify-content: center; }
         .box { background: var(--panel); padding: 40px; border: 2px solid var(--brand); width: 300px; text-align: center; }
         input { width: 90%; padding: 12px; margin: 10px 0; background: #222; border: 1px solid #444; color: white; font-family: inherit; }
@@ -37,6 +37,9 @@
         #editor-ui { display: none; z-index: 50; background: #111; flex-direction: row; }
         #ed-canvas { flex: 2; }
         #ed-sidebar { flex: 1; padding: 20px; background: var(--panel); border-left: 2px solid var(--brand); display: flex; flex-direction: column; gap: 10px; }
+
+        /* CROSSHAIR */
+        #crosshair { position:absolute; top:50%; left:50%; width:6px; height:6px; background:white; border-radius:50%; transform:translate(-50%, -50%); opacity: 0.8; }
     </style>
 </head>
 <body>
@@ -52,7 +55,7 @@
                 </div>
                 <button class="btn btn-main" onclick="showAuth()" id="btn-login">LOGIN</button>
                 <button class="btn btn-main" onclick="showEditor()" id="btn-av" style="display:none; background:#fff;">AVATAR</button>
-                <a href="studio.html"><button class="btn btn-main">CREATE</button></a>
+                <button class="btn btn-main" onclick="goToStudio()">CREATE</button>
             </div>
         </nav>
         
@@ -93,6 +96,7 @@
     <!-- GAME UI -->
     <canvas id="game-canvas" class="layer" style="display:none;"></canvas>
     <div id="game-ui" class="layer">
+        <div id="crosshair"></div>
         <div style="position:absolute; bottom:20px; left:20px; color:rgba(255,255,255,0.5);">WASD to Move • Mouse to Look • SPACE Jump</div>
         <button onclick="exitGame()" style="pointer-events:all; position:absolute; top:20px; right:20px; background:red; border:none; padding:10px 20px; color:white; font-weight:bold; cursor:pointer;">EXIT</button>
     </div>
@@ -106,28 +110,28 @@
         const TSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTIfH1AYbqKA0pAuETV7LqbsPfjPqAMLCm9en8kS42Z9pg1eifjfLST8OTuAtszS7ZAXfwkAIBKAJY9/pub?output=tsv";
 
         // === STATE ===
-        let user = null, avatar = {color:"#ff0000"}, isReg = false;
+        let user = localStorage.getItem("sp_user") || null;
+        let avatar = JSON.parse(localStorage.getItem("sp_avatar")) || {color:"#ff0000"};
+        let isReg = false;
 
-        // === 1. LOBBY & MAPS (TSV INTEGRATION) ===
+        // Auto-Login Check
+        if(user) updateUI(user, avatar);
+
+        // === 1. LOBBY ===
         fetch(TSV_URL).then(r=>r.text()).then(t => {
             const g = document.getElementById("map-grid");
             g.innerHTML = "";
             const rows = t.split("\n");
-            
-            // Loop through rows (skip first if it's header "MapID")
             for(let i=0; i<rows.length; i++) {
                 const row = rows[i];
-                if(!row.trim()) continue;
-                if(i === 0 && row.toLowerCase().includes("mapid")) continue; // Skip header row
+                if(!row.trim() || (i===0 && row.toLowerCase().includes("mapid"))) continue;
                 
                 const c = row.split("\t");
                 if(c.length < 3) continue;
 
-                // Parse JSON columns
                 let h = {name:"Untitled", creator:"Unknown"};
                 try { h = JSON.parse(c[1]); } catch(e){}
-                
-                let b = c[2]; // Body string (Map Data)
+                let b = c[2]; 
 
                 const d = document.createElement("div");
                 d.className = "card";
@@ -140,16 +144,30 @@
                     </div>`;
                 g.appendChild(d);
             }
-            if(g.innerHTML === "") g.innerHTML = "<p>No maps found yet. Create one in Studio!</p>";
-        }).catch(e => {
-            console.error(e);
-            document.getElementById("map-grid").innerHTML = "Error loading maps.";
         });
+
+        function goToStudio() {
+            if(!user) {
+                alert("Please Login to Create Maps!");
+                showAuth();
+            } else {
+                window.location.href = "studio.html";
+            }
+        }
 
         // === 2. AUTHENTICATION ===
         const showAuth = () => document.getElementById("auth-ui").style.display = "flex";
         const toggleAuth = () => { isReg = !isReg; document.getElementById("auth-head").innerText = isReg?"REGISTER":"LOGIN"; document.getElementById("auth-msg").innerText = ""; };
         
+        function updateUI(u, av) {
+            document.getElementById("auth-ui").style.display = "none";
+            document.getElementById("btn-login").style.display = "none";
+            document.getElementById("user-bar").style.display = "flex";
+            document.getElementById("btn-av").style.display = "inline-block";
+            document.getElementById("u-name").innerText = u;
+            document.getElementById("u-av").style.background = av.color;
+        }
+
         function doAuth() {
             const u = document.getElementById("au-user").value;
             const p = document.getElementById("au-pass").value;
@@ -159,34 +177,21 @@
             msg.innerText = "Processing...";
 
             if(isReg) {
-                // REGISTER FLOW (Robust no-cors)
-                fetch(WEB_APP_URL, {
-                    method: "POST", mode: "no-cors",
-                    body: JSON.stringify({ action: "register", username: u, password: p })
-                }).then(() => {
-                    // Success assumed (no-cors prevents reading actual response)
-                    msg.innerText = "Account created! Redirecting to login...";
-                    setTimeout(() => {
-                        toggleAuth(); 
-                        document.getElementById("au-user").value = u;
-                        document.getElementById("au-pass").value = "";
-                        msg.innerText = "";
-                    }, 1500);
-                }).catch(e => msg.innerText = "Connection Error");
+                fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "register", username: u, password: p }) })
+                .then(() => {
+                    msg.innerText = "Created! Login now.";
+                    setTimeout(() => { toggleAuth(); document.getElementById("au-user").value = u; }, 1000);
+                });
             } else {
-                // LOGIN FLOW (GET request)
                 fetch(`${WEB_APP_URL}?action=login&username=${u}&password=${p}`)
                 .then(r=>r.json()).then(d => {
                     if(d.status === "success") {
                         user = u; avatar = d.avatar;
-                        document.getElementById("auth-ui").style.display = "none";
-                        document.getElementById("btn-login").style.display = "none";
-                        document.getElementById("user-bar").style.display = "flex";
-                        document.getElementById("btn-av").style.display = "inline-block";
-                        document.getElementById("u-name").innerText = u;
-                        document.getElementById("u-av").style.background = avatar.color;
+                        localStorage.setItem("sp_user", user);
+                        localStorage.setItem("sp_avatar", JSON.stringify(avatar));
+                        updateUI(user, avatar);
                     } else {
-                        msg.innerText = "Invalid Username or Password";
+                        msg.innerText = "Invalid credentials";
                     }
                 });
             }
@@ -208,26 +213,22 @@
             edRen.setSize(c.offsetWidth, c.offsetHeight);
             c.appendChild(edRen.domElement);
             edSc.add(new THREE.AmbientLight(0xffffff,0.8));
-            
             const geo = new THREE.BoxGeometry(0.5,0.8,0.3);
             edMesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color: avatar.color}));
             edSc.add(edMesh);
-            
             function ani() { requestAnimationFrame(ani); edMesh.rotation.y+=0.01; edRen.render(edSc, cam); }
             ani();
         }
         function setAvColor(c) { avatar.color = c; edMesh.material.color.set(c); }
         function saveAvatar() {
-            fetch(WEB_APP_URL, {
-                method:"POST", mode:"no-cors",
-                body: JSON.stringify({action:"updateAvatar", username:user, avatarData:avatar})
-            });
+            fetch(WEB_APP_URL, { method:"POST", mode:"no-cors", body: JSON.stringify({action:"updateAvatar", username:user, avatarData:avatar}) });
+            localStorage.setItem("sp_avatar", JSON.stringify(avatar));
             document.getElementById("editor-ui").style.display="none";
             document.getElementById("lobby").style.display="block";
             document.getElementById("u-av").style.background = avatar.color;
         }
 
-        // === 4. 3RD PERSON GAME ENGINE ===
+        // === 4. GAME ENGINE (FIXED MOVEMENT & CAMERA) ===
         let scene, camera, renderer, player, cameraBoom;
         let isPlaying = false;
         let yaw = 0, pitch = 0;
@@ -242,18 +243,14 @@
             
             if(!renderer) initGame();
             
-            // Build Map
             scene.clear();
             scene.background = new THREE.Color(data.skyColor || "#87CEEB");
-            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-            const dl = new THREE.DirectionalLight(0xffffff, 0.8);
-            dl.position.set(20,50,20); scene.add(dl);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(20,50,20); scene.add(dl);
             
-            // Floor
             const fl = new THREE.Mesh(new THREE.PlaneGeometry(100,100), new THREE.MeshLambertMaterial({color:0x333}));
             fl.rotation.x = -Math.PI/2; scene.add(fl);
             
-            // Blocks
             if(data.blocks) {
                 const geo = new THREE.BoxGeometry(1,1,1);
                 data.blocks.split("|").forEach(b => {
@@ -266,14 +263,12 @@
                 });
             }
 
-            // Player Setup (3rd Person)
             const pGeo = new THREE.BoxGeometry(0.6, 1.8, 0.4);
             const pMat = new THREE.MeshLambertMaterial({color: avatar.color});
             player = new THREE.Mesh(pGeo, pMat);
-            player.position.set(0,2,0);
+            player.position.set(0,5,0);
             scene.add(player);
 
-            // Camera Boom (Invisible pivot)
             cameraBoom = new THREE.Object3D();
             cameraBoom.position.copy(player.position);
             scene.add(cameraBoom);
@@ -290,15 +285,13 @@
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
             
-            // Mouse Look
             document.addEventListener('mousemove', e => {
                 if(document.pointerLockElement === document.body) {
                     yaw -= e.movementX * 0.002;
                     pitch -= e.movementY * 0.002;
-                    pitch = Math.max(-1, Math.min(1, pitch)); // Clamp Vertical look
+                    pitch = Math.max(-1.4, Math.min(1.4, pitch));
                 }
             });
-            // Keys
             document.addEventListener('keydown', e => {
                 if(e.code==='KeyW') move.f=true;
                 if(e.code==='KeyS') move.b=true;
@@ -312,7 +305,6 @@
                 if(e.code==='KeyA') move.l=false;
                 if(e.code==='KeyD') move.r=false;
             });
-            // Click to lock
             cvs.onclick = () => document.body.requestPointerLock();
         }
 
@@ -320,38 +312,48 @@
             if(!isPlaying) return;
             requestAnimationFrame(animateGame);
 
-            // Gravity
             velocity.y -= 0.01;
             player.position.y += velocity.y;
             if(player.position.y < 0.9) { player.position.y = 0.9; velocity.y = 0; }
 
-            // Movement logic relative to Camera Yaw
+            // === FIXED MOVEMENT MATH ===
             const speed = 0.15;
+            // Yaw is rotation around Y. 
+            // Forward (W) should move towards -Z relative to yaw
             const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
             const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
 
+            // Corrected Directions
             if(move.f) player.position.add(forward.multiplyScalar(speed));
             if(move.b) player.position.add(forward.multiplyScalar(-speed));
-            if(move.l) player.position.add(right.multiplyScalar(-speed));
-            if(move.r) player.position.add(right.multiplyScalar(speed));
+            if(move.r) player.position.add(right.multiplyScalar(speed)); // D is Right
+            if(move.l) player.position.add(right.multiplyScalar(-speed)); // A is Left
 
-            // Camera Boom Update
+            player.rotation.y = yaw; // Player faces cam direction
+
+            // === FORTNITE CAMERA (RIGHT OFFSET) ===
             cameraBoom.position.copy(player.position);
-            cameraBoom.position.y += 1.5; // Eye height
+            cameraBoom.position.y += 1.5;
 
-            // Orbit Logic
             const dist = 5;
+            const shoulderOffset = 1.5; // Shift camera to the right
+
+            // Math for offset
             const hDist = dist * Math.cos(pitch);
             const vDist = dist * Math.sin(pitch);
             
-            camera.position.x = cameraBoom.position.x - (hDist * Math.sin(yaw));
-            camera.position.z = cameraBoom.position.z - (hDist * Math.cos(yaw));
-            camera.position.y = cameraBoom.position.y + vDist;
-            
-            camera.lookAt(cameraBoom.position);
+            // Standard orbit position
+            let camX = cameraBoom.position.x - (hDist * Math.sin(yaw));
+            let camZ = cameraBoom.position.z - (hDist * Math.cos(yaw));
+            let camY = cameraBoom.position.y + vDist;
 
-            // Optional: Rotate player mesh to face movement direction could go here
-            player.rotation.y = yaw; 
+            // Apply Right Offset (Perpendicular to View)
+            // Right vector is (cos(yaw), 0, -sin(yaw))
+            camX += Math.cos(yaw) * shoulderOffset;
+            camZ += -Math.sin(yaw) * shoulderOffset;
+
+            camera.position.set(camX, camY, camZ);
+            camera.lookAt(cameraBoom.position.x + (Math.cos(yaw) * shoulderOffset), cameraBoom.position.y, cameraBoom.position.z + (-Math.sin(yaw) * shoulderOffset));
 
             renderer.render(scene, camera);
         }
