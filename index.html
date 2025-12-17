@@ -2,601 +2,462 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Spotlight</title>
-    
-    <!-- iOS PWA Settings -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Spotlight">
-    <meta name="theme-color" content="#050505">
-    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/96/search.png">
-
-    <!-- Libraries -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
+    <title>VORTEX PLATFORM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&display=swap');
-
-        :root { --bg-color: #050505; --card-bg: #171717; --accent: #a855f7; }
+        :root { --primary: #F4D03F; --accent: #00E5FF; --bg: #0f0f0f; --card: #1a1a1a; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Kanit', sans-serif; overflow: hidden; }
         
-        /* CRITICAL FIX: Allow interaction everywhere */
-        * { -webkit-tap-highlight-color: transparent; outline: none; }
+        /* --- LOBBY UI --- */
+        #lobby-layer { position: absolute; width: 100%; height: 100%; overflow-y: auto; background: var(--bg); }
         
-        body { 
-            font-family: 'Inter Tight', sans-serif; 
-            background-color: var(--bg-color); 
-            color: #e2e8f0;
-            min-height: 100dvh; 
-            overflow: hidden;
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-            overscroll-behavior: none;
-            /* FIX: Allow user select so inputs work natively */
-            -webkit-user-select: auto;
-            user-select: auto;
-            cursor: text;
-        }
-
-        /* Ensure inputs are explicitly interactive */
-        input, textarea { 
-            -webkit-user-select: text; 
-            user-select: text; 
-            /* Fix for iOS inner shadow */
-            -webkit-appearance: none; 
-            appearance: none;
-        }
-
-        /* Search Bar Glow */
-        .search-container { position: relative; z-index: 10; }
-        .search-glow {
-            position: absolute; inset: -2px;
-            background: linear-gradient(45deg, #6366f1, #a855f7, #ec4899);
-            border-radius: 1rem; filter: blur(15px); opacity: 0.5;
-            transition: opacity 0.3s ease, filter 0.3s ease; z-index: -1;
-        }
-        .search-container:focus-within .search-glow { opacity: 1; filter: blur(25px); }
-
-        /* Inputs */
-        .input-wrapper { 
-            position: relative; background: var(--card-bg); 
-            border-radius: 0.75rem; display: flex; align-items: center; 
-            border: 1px solid #262626;
-            min-height: 3.5rem; 
-        }
+        /* Navbar */
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(20,20,20,0.95); border-bottom: 2px solid var(--primary); position: sticky; top: 0; z-index: 10; }
+        .logo { font-size: 2rem; font-style: italic; color: var(--primary); text-transform: uppercase; font-weight: 800; }
+        .nav-right { display: flex; gap: 15px; align-items: center; }
         
-        /* 16px prevents iOS zoom */
-        #mainInput { background: transparent; color: white; z-index: 2; position: relative; font-size: 16px; }
-        #mainInput::placeholder { color: #525252; font-weight: 300; opacity: 1; } 
+        .btn { padding: 10px 25px; border: none; font-weight: 800; text-transform: uppercase; cursor: pointer; transform: skew(-10deg); transition: 0.2s; text-decoration: none; display: inline-block; font-size: 1rem; }
+        .btn-primary { background: var(--primary); color: black; }
+        .btn-accent { background: var(--accent); color: black; }
+        .btn:hover { transform: skew(-10deg) scale(1.05); filter: brightness(1.1); }
+
+        /* User Bar */
+        #user-bar { display: none; align-items: center; gap: 10px; background: #222; padding: 5px 15px; border-radius: 5px; transform: skew(-10deg); border: 1px solid #444; }
+        #avatar-icon { width: 30px; height: 30px; background: #555; border-radius: 50%; border: 2px solid white; }
+
+        /* Map Grid */
+        .hero { text-align: center; padding: 60px 20px; background: radial-gradient(circle, #2a2a2a 0%, #0f0f0f 70%); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; padding: 40px; max-width: 1200px; margin: 0 auto; }
         
-        #ghostInput { 
-            position: absolute; left: 0; top: 0; width: 100%; height: 100%; 
-            background: transparent; color: #525252; pointer-events: none; 
-            z-index: 1; padding-left: 3rem; font-size: 16px;
-        }
+        .card { background: var(--card); border: 1px solid #333; border-radius: 10px; overflow: hidden; transition: 0.3s; position: relative; }
+        .card:hover { transform: translateY(-10px); border-color: var(--accent); box-shadow: 0 0 20px rgba(0, 229, 255, 0.2); }
+        .card-img { height: 160px; background: #252525; display: flex; align-items: center; justify-content: center; color: #444; font-size: 4rem; }
+        .card-content { padding: 15px; }
+        .card h3 { margin: 0; font-size: 1.4rem; color: white; }
+        .card p { color: #888; font-size: 0.9rem; margin: 5px 0 15px 0; }
+        .play-btn { width: 100%; background: var(--accent); border: none; padding: 10px; font-weight: 800; cursor: pointer; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
 
-        /* Results List */
-        .result-item { border-left: 3px solid transparent; }
-        .result-item:active { background-color: #262626; } 
-        .result-item.selected { background-color: #262626; border-left: 3px solid var(--accent); }
-        
-        /* Scrollbars */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        /* --- MODALS --- */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; }
+        .modal-box { background: #1a1a1a; padding: 40px; border-radius: 10px; border: 2px solid var(--primary); width: 350px; text-align: center; }
+        .modal-box input { width: 90%; padding: 12px; margin: 10px 0; background: #333; border: 1px solid #555; color: white; font-family: 'Kanit'; }
 
-        /* Modals */
-        .modal-overlay { 
-            position: fixed; inset: 0; background: rgba(0,0,0,0.9); 
-            backdrop-filter: blur(10px); z-index: 50; 
-            display: flex; justify-content: center; align-items: center; 
-            opacity: 0; pointer-events: none; transition: opacity 0.2s; 
-            padding: 1rem; padding-bottom: env(safe-area-inset-bottom);
-        }
-        .modal-overlay.active { opacity: 1; pointer-events: auto; cursor: default; }
-        .modal-content { 
-            background: #111; border: 1px solid #333; border-radius: 1.2rem; 
-            width: 100%; max-width: 550px; max-height: 85dvh; 
-            overflow-y: auto; transform: scale(0.95); transition: transform 0.2s; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-        }
-        .modal-overlay.active .modal-content { transform: scale(1); }
+        /* Avatar Editor */
+        #editor-ui { display: none; position: absolute; top:0; left:0; width:100%; height:100%; background: #111; z-index: 50; flex-direction: row; }
+        #editor-canvas { flex: 2; background: radial-gradient(#333, #000); }
+        #editor-sidebar { flex: 1; background: #1a1a1a; padding: 20px; border-left: 2px solid var(--primary); display: flex; flex-direction: column; gap: 10px; }
+        .part-btn { background: #333; color: white; border: 1px solid #555; padding: 10px; cursor: pointer; text-align: left; transition: 0.2s; }
+        .part-btn:hover { border-color: var(--accent); background: #222; }
 
-        .icon-option { 
-            aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
-            background: #222; border-radius: 8px; cursor: pointer; color: #666; 
-            border: 2px solid transparent; transition: all 0.2s; 
-        }
-        .icon-option.selected { background: #3b0764; border-color: #a855f7; color: #fff; }
-
-        /* Sync Indicator */
-        #syncIndicator {
-            position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: 20px;
-            background: rgba(38, 38, 38, 0.8); border: 1px solid #333;
-            padding: 6px 12px; border-radius: 30px;
-            font-size: 11px; color: #666; font-weight: 500;
-            display: flex; align-items: center; gap: 6px;
-            transform: translateY(100px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 40; backdrop-filter: blur(4px); pointer-events: none;
-        }
-        #syncIndicator.visible { transform: translateY(0); }
-
-        .fade-in { animation: fadeIn 0.3s ease forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        /* --- GAME HUD --- */
+        #game-layer { display: none; position: absolute; width: 100%; height: 100%; }
+        #game-canvas { display: block; width: 100%; height: 100%; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+        #exit-btn { position: absolute; top: 20px; right: 20px; background: red; color: white; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; display: none; }
     </style>
 </head>
-<body class="flex flex-col items-center justify-start pt-24 md:pt-32">
+<body>
 
-    <div id="syncIndicator">
-        <i class="fas fa-circle-notch fa-spin text-purple-500"></i>
-        <span id="syncText">Syncing...</span>
-    </div>
-
-    <div class="w-full max-w-lg px-4 md:px-0 relative">
-        <div class="flex justify-between items-end mb-6 px-2">
-            <div>
-                <h1 class="text-3xl font-bold text-white tracking-tight">Spotlight</h1>
-                <p class="text-neutral-500 text-sm mt-1">Ready.</p>
-            </div>
-            <div class="flex gap-3 pb-1">
-                <!-- Stop propagation ensures these buttons don't trigger the "Tap anywhere" search focus -->
-                <button onclick="event.stopPropagation(); notesApp.openNew()" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
-                    <span class="text-xs text-neutral-400 group-hover:text-white font-medium flex items-center gap-2">
-                        <i class="fas fa-plus"></i> <span class="hidden sm:inline">Note</span>
-                    </span>
-                </button>
-                <button onclick="event.stopPropagation(); settingsApp.open()" class="p-3 rounded-xl bg-neutral-900 active:bg-neutral-800 border border-neutral-800 transition-colors group">
-                    <span class="text-xs text-neutral-400 group-hover:text-white font-medium flex items-center gap-2">
-                        <i class="fas fa-cog"></i> <span class="hidden sm:inline">Settings</span>
-                    </span>
-                </button>
-            </div>
-        </div>
-
-        <div class="search-container">
-            <div class="search-glow"></div>
-            <div class="input-wrapper shadow-2xl">
-                <div class="pl-4 pr-3 text-neutral-500">
-                    <i class="fas fa-search" id="mainIcon"></i>
-                </div>
-                <div class="relative flex-grow h-14">
-                    <input type="text" id="ghostInput" disabled>
-                    <!-- enterkeyhint="go" gives blue Go button on iOS -->
-                    <input 
-                        type="text" 
-                        id="mainInput" 
-                        class="h-full w-full pl-2 text-lg outline-none font-light bg-transparent" 
-                        autocomplete="off" 
-                        spellcheck="false" 
-                        enterkeyhint="go"
-                        placeholder="Search..."
-                    >
-                </div>
-                <div class="pr-3 hidden md:block" id="tabHint">
-                    <span class="text-[10px] font-mono bg-neutral-800 text-neutral-400 px-2 py-1 rounded border border-neutral-700 opacity-0 transition-opacity duration-200">TAB</span>
-                </div>
-            </div>
-            <div id="predictionsBox" class="absolute top-full left-0 right-0 mt-3 bg-[#111]/95 backdrop-blur-xl border border-neutral-800 rounded-xl shadow-2xl overflow-hidden hidden z-50">
-                <div id="resultsList" class="max-h-[50dvh] overflow-y-auto results-scroll py-1"></div>
-            </div>
-        </div>
-        
-        <div class="mt-6 text-neutral-600 text-xs text-center opacity-60">
-            Tap anywhere to search
-        </div>
-    </div>
-
-    <!-- SETTINGS MODAL -->
-    <div id="settingsModal" class="modal-overlay">
-        <div class="modal-content p-6">
-            <div class="flex justify-between items-center mb-6 border-b border-neutral-800 pb-4">
-                <h2 class="text-lg font-bold text-white"><i class="fas fa-sliders-h mr-2 text-purple-500"></i>Settings</h2>
-                <button onclick="settingsApp.close()" class="text-neutral-500 hover:text-white p-2"><i class="fas fa-times"></i></button>
-            </div>
-
-            <div class="mb-8">
-                <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Account</h3>
-                <div class="bg-neutral-900/50 p-4 rounded-xl border border-neutral-800">
-                    <p class="text-xs text-neutral-500 mb-3">Log in once. Data merges automatically every 20s.</p>
-                    <div class="space-y-3">
-                        <input id="syncUser" type="text" placeholder="Username" class="w-full bg-black border border-neutral-700 text-white px-3 py-3 rounded-lg text-sm focus:border-purple-500 outline-none">
-                        <input id="syncPass" type="password" placeholder="Password" class="w-full bg-black border border-neutral-700 text-white px-3 py-3 rounded-lg text-sm focus:border-purple-500 outline-none">
+    <!-- LOBBY -->
+    <div id="lobby-layer">
+        <nav>
+            <div class="logo">VORTEX</div>
+            <div class="nav-right">
+                <div id="user-bar">
+                    <div id="avatar-icon"></div>
+                    <div>
+                        <div id="u-name" style="font-size:0.9rem; line-height:1;">Guest</div>
+                        <div id="u-credits" style="font-size:0.7rem; color:var(--primary);">0 V-Bux</div>
                     </div>
-                    <div class="flex gap-2 mt-3">
-                        <button onclick="syncApp.forceSync()" class="w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 rounded-lg text-sm border border-neutral-700 transition-colors font-medium">
-                            Login / Signup
-                        </button>
-                    </div>
-                    <div id="modalSyncStatus" class="text-xs text-center mt-2 text-neutral-500 h-4"></div>
                 </div>
+                <button class="btn btn-primary" onclick="openLogin()" id="login-btn">LOGIN</button>
+                <button class="btn btn-accent" onclick="openEditor()" id="edit-btn" style="display:none;">AVATAR</button>
+                <a href="studio.html" class="btn btn-primary" style="background: white;">CREATE</a>
             </div>
+        </nav>
 
-            <div class="mb-8">
-                <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Add Shortcut</h3>
-                <div class="flex gap-2 mb-3">
-                    <input id="newShortName" placeholder="Name" class="bg-neutral-900 border border-neutral-800 text-white px-3 py-3 rounded-lg w-1/3 text-sm outline-none focus:border-purple-500">
-                    <input id="newShortUrl" placeholder="https://..." class="bg-neutral-900 border border-neutral-800 text-white px-3 py-3 rounded-lg w-2/3 text-sm outline-none focus:border-purple-500">
-                </div>
-                <div class="mb-3">
-                    <div id="iconGrid" class="grid grid-cols-6 md:grid-cols-8 gap-2"></div>
-                    <input type="hidden" id="selectedIconInput">
-                </div>
-                <button onclick="settingsApp.addShortcut()" class="w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 rounded-lg text-sm border border-neutral-700 mb-4 font-medium">Create Shortcut</button>
-                <div id="shortcutsList" class="space-y-1 max-h-40 overflow-y-auto"></div>
-            </div>
+        <div class="hero">
+            <h1>FEATURED MAPS</h1>
+        </div>
 
-            <div class="pt-4 border-t border-neutral-800">
-                <button onclick="if(confirm('Reset all local data?')) { brain.reset(); settingsApp.close(); }" class="text-red-500 text-xs hover:text-red-400 hover:underline p-2">Reset Local Data</button>
+        <div class="grid" id="map-grid">
+            <p>Connecting to Spreadsheet...</p>
+        </div>
+    </div>
+
+    <!-- LOGIN MODAL -->
+    <div id="auth-modal" class="modal">
+        <div class="modal-box">
+            <h2 id="auth-title">LOGIN</h2>
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button class="btn btn-primary" style="width:100%" onclick="handleAuth()">SUBMIT</button>
+            <p style="font-size: 0.8rem; color: #888; cursor: pointer;" onclick="toggleReg()">Switch to Register / Login</p>
+        </div>
+    </div>
+
+    <!-- AVATAR EDITOR -->
+    <div id="editor-ui">
+        <div id="editor-canvas"></div>
+        <div id="editor-sidebar">
+            <h2>CUSTOMIZE</h2>
+            <p>Colors</p>
+            <button class="part-btn" onclick="setAvatarColor('red')">Red Team</button>
+            <button class="part-btn" onclick="setAvatarColor('blue')">Blue Team</button>
+            <button class="part-btn" onclick="setAvatarColor('green')">Green Team</button>
+            <p>Hats</p>
+            <button class="part-btn" onclick="setAvatarHat('none')">No Hat</button>
+            <button class="part-btn" onclick="setAvatarHat('tophat')">Top Hat</button>
+            <button class="part-btn" onclick="setAvatarHat('blockhead')">Block Head</button>
+            <div style="margin-top:auto;">
+                <button class="btn btn-accent" style="width:100%" onclick="saveAvatar()">SAVE & EXIT</button>
             </div>
         </div>
     </div>
 
-    <!-- NOTES MODAL -->
-    <div id="notesModal" class="modal-overlay">
-        <div class="modal-content p-0 flex flex-col h-[600px]">
-            <div class="p-4 border-b border-neutral-800 bg-neutral-900 flex justify-between items-center">
-                <input id="noteTitle" type="text" placeholder="Untitled Note" class="bg-transparent text-white font-bold text-lg outline-none w-full placeholder-neutral-600">
-                <div class="flex gap-2">
-                    <button onclick="notesApp.deleteCurrent()" class="text-neutral-500 hover:text-red-500 p-2"><i class="fas fa-trash"></i></button>
-                    <button onclick="notesApp.saveAndClose()" class="text-purple-400 hover:text-white font-medium text-sm px-4 py-2 rounded-lg bg-purple-900/20 border border-purple-900/50">Done</button>
-                </div>
-            </div>
-            <textarea id="noteBody" class="flex-grow bg-[#0a0a0a] text-neutral-300 p-4 outline-none resize-none text-base leading-relaxed" placeholder="Start typing..."></textarea>
-        </div>
+    <!-- GAME LAYER -->
+    <div id="game-layer">
+        <canvas id="game-canvas"></canvas>
+        <div id="crosshair"></div>
+        <button id="exit-btn" onclick="exitGame()">EXIT</button>
     </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 
     <script>
-        // --- CONFIGURATION ---
-        const API_URL = "https://script.google.com/macros/s/AKfycbyIm8r81-pzMIZqWJv-X_Mykee7dapXYxATnCP_cuVuzZapRx0bU7mI4lU7KpvBYgcm/exec"; 
-        
-        const KEYS = {
-            NOTES: 'spotlight_notes_v2026',
-            SHORTCUTS: 'spotlight_shortcuts_v2026',
-            HISTORY: 'spotlight_history_v2026',
-            CREDS: 'spotlight_creds_v2026'
-        };
+        // === CONFIGURATION ===
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwRtQWIwlGkYowV-qD4rRn6Zz1AzZpvyGF7CyynEvDyfdXhCWGIb_E8UqoABgHLs6bN/exec";
+        const TSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTIfH1AYbqKA0pAuETV7LqbsPfjPqAMLCm9en8kS42Z9pg1eifjfLST8OTuAtszS7ZAXfwkAIBKAJY9/pub?output=tsv";
 
-        // --- UTILS ---
-        function levenshtein(a, b) {
-            if(a.length == 0) return b.length; 
-            if(b.length == 0) return a.length;
-            var matrix = [];
-            for(var i = 0; i <= b.length; i++){ matrix[i] = [i]; }
-            for(var j = 0; j <= a.length; j++){ matrix[0][j] = j; }
-            for(var i = 1; i <= b.length; i++){
-                for(var j = 1; j <= a.length; j++){
-                    if(b.charAt(i-1) == a.charAt(j-1)){ matrix[i][j] = matrix[i-1][j-1]; }
-                    else { matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1)); }
-                }
-            }
-            return matrix[b.length][a.length];
+        // === STATE ===
+        let currentUser = null;
+        let myAvatar = { color: "#ffffff", hat: "none" };
+        let isRegistering = false;
+
+        // === 1. LOBBY SYSTEM ===
+        
+        // Fetch Maps from Read-Only TSV (Super Fast)
+        fetch(TSV_URL)
+            .then(res => res.text())
+            .then(text => {
+                const grid = document.getElementById("map-grid");
+                grid.innerHTML = "";
+                const rows = text.split("\n");
+                
+                // Skip row 0 if it's headers
+                rows.forEach((row, index) => {
+                    if(index === 0 && row.includes("MapID")) return;
+                    if(!row.trim()) return;
+
+                    const cols = row.split("\t");
+                    if(cols.length < 3) return;
+
+                    const id = cols[0];
+                    let header = {}, body = {};
+                    
+                    try { header = JSON.parse(cols[1]); } catch(e) { header = {name:"Error", creator:"Unknown"}; }
+                    try { body = JSON.parse(cols[2]); } catch(e) {}
+
+                    // Store body in button for click
+                    const safeBody = encodeURIComponent(JSON.stringify(body));
+
+                    const card = document.createElement("div");
+                    card.className = "card";
+                    card.innerHTML = `
+                        <div class="card-img"></div>
+                        <div class="card-content">
+                            <h3>${header.name || "Untitled"}</h3>
+                            <p>By ${header.creator || "Anonymous"}</p>
+                            <button class="play-btn" onclick="launchGame('${safeBody}')">PLAY</button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            });
+
+        // === 2. AUTH SYSTEM ===
+        function openLogin() { document.getElementById("auth-modal").style.display = "flex"; }
+        function toggleReg() { 
+            isRegistering = !isRegistering; 
+            document.getElementById("auth-title").innerText = isRegistering ? "REGISTER" : "LOGIN"; 
         }
 
-        // --- MERGE LOGIC ---
-        const Merger = {
-            notes: (local, server) => {
-                const map = new Map();
-                server.forEach(n => map.set(n.id, n));
-                local.forEach(n => {
-                    const exists = map.get(n.id);
-                    if (!exists || (n.updated > exists.updated)) {
-                        map.set(n.id, n);
-                    }
-                });
-                return Array.from(map.values()).sort((a,b) => b.updated - a.updated);
-            },
-            shortcuts: (localMap, serverMap) => { return { ...serverMap, ...localMap }; },
-            history: (local, server) => {
-                const map = new Map();
-                server.forEach(h => map.set(h.term, h));
-                local.forEach(h => {
-                    const exists = map.get(h.term);
-                    if (!exists || h.count > exists.count) map.set(h.term, h);
-                });
-                return Array.from(map.values());
-            }
-        };
+        function handleAuth() {
+            const u = document.getElementById("username").value;
+            const p = document.getElementById("password").value;
+            if(!u || !p) return alert("Enter details");
 
-        // --- SYNC SYSTEM ---
-        const Syncer = {
-            indicator: document.getElementById('syncIndicator'),
-            text: document.getElementById('syncText'),
+            // Use Web App URL for Logic
+            const action = isRegistering ? "register" : "login";
             
-            show: (msg, isError = false) => {
-                Syncer.text.innerText = msg;
-                Syncer.text.className = isError ? "text-red-400" : "text-neutral-300";
-                Syncer.indicator.classList.add('visible');
-                setTimeout(() => Syncer.indicator.classList.remove('visible'), 2000);
-            },
-
-            executeSmartSync: async (user, pass, silent = false) => {
-                if(silent) Syncer.show("Syncing...");
-                try {
-                    const res = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: 'login', username: user, password: pass }) });
-                    const json = await res.json();
-                    if (json.status === "success") {
-                        if (json.data.notes) brain.notes.list = Merger.notes(brain.notes.list, json.data.notes);
-                        if (json.data.shortcuts) brain.shortcuts.custom = Merger.shortcuts(brain.shortcuts.custom, json.data.shortcuts);
-                        if (json.data.savedShortcuts) brain.shortcuts.auto = Merger.shortcuts(brain.shortcuts.auto, json.data.savedShortcuts);
-                        if (json.data.history) brain.history = Merger.history(brain.history, json.data.history);
-
-                        brain.notes.saveLocal();
-                        brain.shortcuts.saveLocal();
-                        brain.saveHistoryLocal();
-
-                        if(settingsApp.modal.classList.contains('active')) settingsApp.renderList();
-
-                        const uploadPayload = {
-                            action: 'save',
-                            username: user,
-                            password: pass,
-                            data: {
-                                notes: brain.notes.list,
-                                shortcuts: brain.shortcuts.custom,
-                                savedShortcuts: brain.shortcuts.auto,
-                                history: brain.history
-                            }
-                        };
-                        await fetch(API_URL, { method: "POST", body: JSON.stringify(uploadPayload) });
-                        if(!silent) Syncer.show("Up to date!");
-                        return true;
+            // For Login, we use GET to read response easily
+            // For Register, we use POST
+            if(action === "login") {
+                fetch(`${WEB_APP_URL}?action=login&username=${u}&password=${p}`)
+                .then(res => res.json())
+                .then(data => {
+                    if(data.status === "success") {
+                        loginSuccess(u, data.avatar, data.stats);
                     } else {
-                        if(!silent) Syncer.show("Error: " + json.message, true);
-                        return false;
-                    }
-                } catch (e) {
-                    console.error(e);
-                    if(!silent) Syncer.show("Connection failed", true);
-                    return false;
-                }
-            }
-        };
-
-        // --- DATA MODULES ---
-        class NotesManager {
-            constructor() { this.list = JSON.parse(localStorage.getItem(KEYS.NOTES)) || []; }
-            saveLocal() { localStorage.setItem(KEYS.NOTES, JSON.stringify(this.list)); }
-            save() { this.saveLocal(); }
-            create(title, body) { this.list.unshift({ id: Date.now().toString(), title: title || "Untitled", body, updated: Date.now() }); this.save(); }
-            update(id, title, body) { const idx = this.list.findIndex(n => n.id === id); if (idx !== -1) { this.list[idx] = { ...this.list[idx], title, body, updated: Date.now() }; this.save(); } }
-            delete(id) { this.list = this.list.filter(n => n.id !== id); this.save(); }
-            get(id) { return this.list.find(n => n.id === id); }
-        }
-
-        class ShortcutManager {
-            constructor() {
-                this.defaults = {
-                    "youtube": { url: "https://www.youtube.com", icon: "fa-play", name: "YouTube", class: "text-red-500" },
-                    "gmail": { url: "https://mail.google.com", icon: "fa-envelope", name: "Gmail", class: "text-red-400" },
-                    "outlook": { url: "https://outlook.live.com", icon: "fa-envelope", name: "Outlook", class: "text-blue-500" },
-                    "spotify": { url: "https://open.spotify.com", icon: "fa-music", name: "Spotify", class: "text-green-500" },
-                    "applemusic": { url: "https://music.apple.com", icon: "fa-music", name: "Apple Music", class: "text-pink-500" },
-                    "maps": { url: "https://maps.google.com", icon: "fa-map-marker-alt", name: "Maps", class: "text-green-500" },
-                    "reddit": { url: "https://www.reddit.com", icon: "fa-robot", name: "Reddit", class: "text-orange-500" },
-                    "chatgpt": { url: "https://chat.openai.com", icon: "fa-bolt", name: "ChatGPT", class: "text-teal-400" },
-                    "amazon": { url: "https://www.amazon.com", icon: "fa-shopping-cart", name: "Amazon", class: "text-yellow-500" }
-                };
-                const saved = JSON.parse(localStorage.getItem(KEYS.SHORTCUTS)) || { custom: {}, auto: {} };
-                this.custom = saved.custom || {};
-                this.auto = saved.auto || {};
-            }
-            saveLocal() { localStorage.setItem(KEYS.SHORTCUTS, JSON.stringify({ custom: this.custom, auto: this.auto })); }
-            save() { this.saveLocal(); }
-            getAll() { return { ...this.defaults, ...this.auto, ...this.custom }; }
-            add(name, url, icon) { const key = name.toLowerCase().replace(/\s/g, ''); this.custom[key] = { name, url, icon: icon || 'fa-link', class: 'text-purple-400' }; this.save(); }
-            remove(key) { if(this.custom[key]) delete this.custom[key]; this.save(); }
-        }
-
-        class Brain {
-            constructor() {
-                this.notes = new NotesManager();
-                this.shortcuts = new ShortcutManager();
-                this.history = JSON.parse(localStorage.getItem(KEYS.HISTORY)) || [];
-                if (this.history.length === 0) this.seed();
-            }
-            saveHistoryLocal() { localStorage.setItem(KEYS.HISTORY, JSON.stringify(this.history)); }
-            save() { this.saveHistoryLocal(); }
-            seed() {
-                const now = Date.now();
-                this.history = [ { term: "YouTube", count: 5, lastAccess: now }, { term: "Gmail", count: 3, lastAccess: now } ];
-                this.saveHistoryLocal();
-            }
-            predict(input) {
-                const q = input.toLowerCase().trim();
-                if (!q) return [];
-                const results = [];
-                const seen = new Set();
-                const add = (type, item, score, meta={}) => {
-                    if (seen.has(item.term.toLowerCase())) return;
-                    results.push({ type, term: item.term, score, ...meta });
-                    seen.add(item.term.toLowerCase());
-                };
-                if ("settings".startsWith(q) || "config".startsWith(q)) add('cmd', {term: "Settings"}, 2000, {action: 'settings', icon:'fa-cog'});
-                if ("new note".startsWith(q) || "note".startsWith(q)) add('cmd', {term: "New Note"}, 2000, {action: 'note', icon:'fa-plus'});
-                this.notes.list.forEach(n => { if (n.title.toLowerCase().includes(q)) add('note', {term: n.title}, 1000, {id: n.id}); });
-                const all = this.shortcuts.getAll();
-                for (const [key, val] of Object.entries(all)) {
-                    const nameLower = val.name.toLowerCase();
-                    let score = 0;
-                    if (nameLower.startsWith(q)) score = 900;
-                    else if (nameLower.split(' ').some(w => w.startsWith(q))) score = 850;
-                    else if (q.length > 2 && levenshtein(q, nameLower) <= 1) score = 700;
-                    if (score > 0) add('shortcut', {term: val.name}, score, { url: val.url, icon: val.icon, class: val.class });
-                }
-                this.history.forEach(h => {
-                    if (h.term.toLowerCase().includes(q)) {
-                        let score = h.count + 500;
-                        const known = Object.values(all).find(s => s.name.toLowerCase() === h.term.toLowerCase());
-                        let meta = { icon: 'fa-search', class: 'text-neutral-500' };
-                        if (known) meta = { icon: known.icon, class: known.class, url: known.url };
-                        add('history', h, score, meta);
+                        alert("Login Failed");
                     }
                 });
-                return results.sort((a,b) => b.score - a.score).slice(0, 6);
+            } else {
+                fetch(WEB_APP_URL, {
+                    method: "POST", mode: "no-cors",
+                    body: JSON.stringify({ action: "register", username: u, password: p })
+                }).then(() => {
+                    alert("Registration Sent! Try logging in.");
+                    toggleReg();
+                });
             }
-            learn(term) {
-                const all = this.shortcuts.getAll();
-                const match = Object.values(all).find(s => s.name.toLowerCase() === term.toLowerCase());
-                const finalTerm = match ? match.name : term;
-                const existing = this.history.find(h => h.term.toLowerCase() === finalTerm.toLowerCase());
-                if (existing) { existing.count++; existing.lastAccess = Date.now(); } else { this.history.push({ term: finalTerm, count: 1, lastAccess: Date.now() }); }
-                this.save();
-            }
-            reset() { localStorage.clear(); window.location.reload(); }
         }
 
-        // --- APP LOGIC ---
-        const brain = new Brain();
-        const els = {
-            main: document.getElementById('mainInput'),
-            ghost: document.getElementById('ghostInput'),
-            box: document.getElementById('predictionsBox'),
-            list: document.getElementById('resultsList'),
-            hint: document.getElementById('tabHint')
-        };
-        let suggestions = [];
-        let selIndex = 0;
-
-        // --- TAP ANYWHERE LOGIC (FIXED FOR iOS) ---
-        // Using a body click listener, but ensuring we don't steal focus if user is interacting with something else
-        document.addEventListener('click', (e) => {
-            const target = e.target;
-            // If we are in a modal or clicking a specific interactive element, do nothing
-            if (document.querySelector('.modal-overlay.active')) return;
-            if (['INPUT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName) || target.closest('button') || target.closest('.result-item')) return;
+        function loginSuccess(user, avatar, stats) {
+            currentUser = user;
+            myAvatar = avatar;
             
-            // Otherwise, focus main input
-            els.main.focus();
-        });
+            document.getElementById("auth-modal").style.display = "none";
+            document.getElementById("login-btn").style.display = "none";
+            document.getElementById("edit-btn").style.display = "inline-block";
+            document.getElementById("user-bar").style.display = "flex";
+            
+            document.getElementById("u-name").innerText = user;
+            document.getElementById("u-credits").innerText = (stats.credits || 0) + " V-Bux";
+            document.getElementById("avatar-icon").style.backgroundColor = avatar.color || "#fff";
+        }
 
-        // --- AUTO SYNC ---
-        window.addEventListener('load', () => {
-            const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
-            if(creds.user && creds.pass) {
-                Syncer.executeSmartSync(creds.user, creds.pass, true);
-                document.getElementById('syncUser').value = creds.user;
-                document.getElementById('syncPass').value = creds.pass;
-            }
-        });
-
-        setInterval(() => {
-            const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
-            if (!creds.user || !creds.pass) return;
-            const activeTag = document.activeElement.tagName;
-            const isTyping = (activeTag === 'INPUT' || activeTag === 'TEXTAREA');
-            if (!isTyping) Syncer.executeSmartSync(creds.user, creds.pass, true);
-        }, 20000); 
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                const creds = JSON.parse(localStorage.getItem(KEYS.CREDS) || '{}');
-                if(creds.user) Syncer.executeSmartSync(creds.user, creds.pass, true);
-            }
-        });
-
-        els.main.addEventListener('input', (e) => render(e.target.value));
-        els.main.addEventListener('focus', () => render(els.main.value));
+        // === 3. AVATAR EDITOR ===
+        let editorScene, editorRenderer, editorMesh, editorHat;
         
-        function render(val) {
-            suggestions = brain.predict(val);
-            els.list.innerHTML = '';
-            selIndex = 0;
-            if (suggestions.length > 0) {
-                els.box.classList.remove('hidden');
-                const top = suggestions[0];
-                if (val && top.term.toLowerCase().startsWith(val.toLowerCase())) {
-                    els.ghost.value = val + top.term.substring(val.length);
-                    els.hint.style.opacity = '1';
-                } else {
-                    els.ghost.value = '';
-                    els.hint.style.opacity = '0';
-                }
-                suggestions.forEach((item, idx) => {
-                    const div = document.createElement('div');
-                    div.className = `result-item p-3 mx-1 rounded-lg flex items-center justify-between cursor-pointer transition-colors ${idx === 0 ? 'selected' : ''} hover:bg-white/5`;
-                    let icon = item.icon || 'fa-search';
-                    let color = item.class || 'text-neutral-500';
-                    let tag = '';
-                    if (item.type === 'note') { icon = 'fa-sticky-note'; color = 'text-yellow-500'; tag = 'NOTE'; }
-                    if (item.type === 'cmd') { color = 'text-blue-400'; tag = 'CMD'; }
-                    div.innerHTML = `<div class="flex items-center text-neutral-200"><div class="w-8 flex justify-center mr-2 ${color}"><i class="fas ${icon}"></i></div><span class="font-medium">${item.term}</span></div>${tag ? `<span class="text-[10px] bg-neutral-800 text-neutral-500 px-1.5 py-0.5 rounded border border-neutral-700">${tag}</span>` : ''}`;
-                    div.onclick = (e) => { e.stopPropagation(); run(item); };
-                    els.list.appendChild(div);
+        function openEditor() {
+            document.getElementById("lobby-layer").style.display = "none";
+            document.getElementById("editor-ui").style.display = "flex";
+            initEditor3D();
+        }
+
+        function initEditor3D() {
+            if(editorScene) return;
+            const container = document.getElementById("editor-canvas");
+            editorScene = new THREE.Scene();
+            
+            const cam = new THREE.PerspectiveCamera(50, container.offsetWidth/container.offsetHeight, 0.1, 100);
+            cam.position.set(0, 1, 3);
+            
+            editorRenderer = new THREE.WebGLRenderer({alpha:true});
+            editorRenderer.setSize(container.offsetWidth, container.offsetHeight);
+            container.appendChild(editorRenderer.domElement);
+            
+            // Light
+            editorScene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const dl = new THREE.DirectionalLight(0xffffff, 1);
+            dl.position.set(2, 2, 2);
+            editorScene.add(dl);
+
+            // Dummy Char
+            editorMesh = new THREE.Group();
+            
+            const mat = new THREE.MeshLambertMaterial({color: myAvatar.color});
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.3), mat);
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({color: 0xffccaa}));
+            head.position.y = 0.5;
+            
+            // Hat Group
+            editorHat = new THREE.Group();
+            editorHat.position.y = 0.7;
+            
+            editorMesh.add(body);
+            editorMesh.add(head);
+            editorMesh.add(editorHat);
+            editorScene.add(editorMesh);
+
+            // Apply current settings
+            updateEditorVisuals();
+
+            function animate() {
+                requestAnimationFrame(animate);
+                editorMesh.rotation.y += 0.01;
+                editorRenderer.render(editorScene, cam);
+            }
+            animate();
+        }
+
+        function updateEditorVisuals() {
+            // Update Body Color
+            editorMesh.children[0].material.color.set(myAvatar.color);
+            
+            // Update Hat
+            editorHat.clear();
+            if(myAvatar.hat === 'tophat') {
+                const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.4, 32), new THREE.MeshLambertMaterial({color:0x111}));
+                editorHat.add(cyl);
+            } else if (myAvatar.hat === 'blockhead') {
+                const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshLambertMaterial({color:0x555}));
+                editorHat.add(box);
+            }
+        }
+
+        function setAvatarColor(c) { myAvatar.color = c; updateEditorVisuals(); }
+        function setAvatarHat(h) { myAvatar.hat = h; updateEditorVisuals(); }
+
+        function saveAvatar() {
+            // Save to Cloud
+            fetch(WEB_APP_URL, {
+                method: "POST", mode: "no-cors",
+                body: JSON.stringify({
+                    action: "updateAvatar",
+                    username: currentUser,
+                    avatarData: myAvatar
+                })
+            }).then(() => {
+                document.getElementById("editor-ui").style.display = "none";
+                document.getElementById("lobby-layer").style.display = "block";
+                document.getElementById("avatar-icon").style.backgroundColor = myAvatar.color;
+            });
+        }
+
+
+        // === 4. GAME ENGINE ===
+        let scene, camera, renderer, controls, isPlaying = false;
+        
+        function launchGame(jsonString) {
+            const mapData = JSON.parse(decodeURIComponent(jsonString));
+            
+            document.getElementById("lobby-layer").style.display = "none";
+            document.getElementById("game-layer").style.display = "block";
+            
+            if(!renderer) initGameEngine();
+            loadMap(mapData);
+            
+            isPlaying = true;
+            controls.lock();
+            document.getElementById("exit-btn").style.display = "none"; // Hide initially
+            animateGame();
+        }
+
+        function initGameEngine() {
+            const canvas = document.getElementById("game-canvas");
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            controls = new THREE.PointerLockControls(camera, document.body);
+            
+            controls.addEventListener('unlock', () => {
+                if(isPlaying) document.getElementById("exit-btn").style.display = "block";
+            });
+            controls.addEventListener('lock', () => {
+                 document.getElementById("exit-btn").style.display = "none";
+            });
+
+            // Movement Listeners
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+        }
+
+        function loadMap(data) {
+            // Reset
+            scene.clear();
+            
+            // Sky
+            scene.background = new THREE.Color(data.skyColor || "#87CEEB");
+            
+            // Lights
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const dl = new THREE.DirectionalLight(0xffffff, 0.6);
+            dl.position.set(10,20,10);
+            scene.add(dl);
+
+            // Floor
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(100,100), new THREE.MeshLambertMaterial({color:0x222}));
+            floor.rotation.x = -Math.PI/2;
+            scene.add(floor);
+
+            // Blocks
+            if(data.blocks) {
+                const geo = new THREE.BoxGeometry(1,1,1);
+                const chunks = data.blocks.split("|");
+                chunks.forEach(chunk => {
+                    const [x,y,z,col] = chunk.split(",");
+                    if(x && y && z) {
+                        const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color: parseInt(col)}));
+                        mesh.position.set(parseFloat(x), parseFloat(y), parseFloat(z));
+                        scene.add(mesh);
+                    }
                 });
-            } else {
-                els.box.classList.add('hidden');
-                els.ghost.value = '';
-                els.hint.style.opacity = '0';
+            }
+
+            // Spawn
+            const s = data.spawn || {x:0, y:2, z:0};
+            camera.position.set(s.x, s.y, s.z);
+        }
+
+        // Physics vars
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+        let moveF=false, moveB=false, moveL=false, moveR=false, canJump=false;
+        let prevTime = performance.now();
+
+        function onKeyDown(e) {
+            switch(e.code) {
+                case 'KeyW': moveF = true; break;
+                case 'KeyS': moveB = true; break;
+                case 'KeyA': moveL = true; break;
+                case 'KeyD': moveR = true; break;
+                case 'Space': if(canJump) { velocity.y += 15; canJump = false; } break;
+            }
+        }
+        function onKeyUp(e) {
+             switch(e.code) {
+                case 'KeyW': moveF = false; break;
+                case 'KeyS': moveB = false; break;
+                case 'KeyA': moveL = false; break;
+                case 'KeyD': moveR = false; break;
             }
         }
 
-        function run(item) {
-            if (item.type === 'cmd') {
-                if(item.action === 'settings') settingsApp.open();
-                if(item.action === 'note') notesApp.openNew();
-            } else if (item.type === 'note') {
-                notesApp.openExisting(item.id);
-            } else {
-                brain.learn(item.term);
-                els.main.value = "Opening...";
-                document.getElementById('mainIcon').className = "fas fa-circle-notch fa-spin text-purple-500";
-                if (item.url) setTimeout(() => window.location.href = item.url, 300);
-                else {
-                    setTimeout(() => window.open(`https://www.google.com/search?q=${encodeURIComponent(item.term)}`, '_blank'), 300);
-                    setTimeout(() => { els.main.value = ""; document.getElementById('mainIcon').className = "fas fa-search"; }, 1000);
+        function animateGame() {
+            if(!isPlaying) return;
+            requestAnimationFrame(animateGame);
+
+            if(controls.isLocked) {
+                const time = performance.now();
+                const delta = (time - prevTime) / 1000;
+
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+                velocity.y -= 9.8 * 3.0 * delta;
+
+                direction.z = Number(moveF) - Number(moveB);
+                direction.x = Number(moveR) - Number(moveL);
+                direction.normalize();
+
+                if (moveF || moveB) velocity.z -= direction.z * 100.0 * delta;
+                if (moveL || moveR) velocity.x -= direction.x * 100.0 * delta;
+
+                controls.moveRight(-velocity.x * delta);
+                controls.moveForward(-velocity.z * delta);
+                camera.position.y += velocity.y * delta;
+
+                if (camera.position.y < 2) {
+                    velocity.y = 0;
+                    camera.position.y = 2;
+                    canJump = true;
                 }
             }
-            els.box.classList.add('hidden');
+            prevTime = performance.now();
+            renderer.render(scene, camera);
         }
 
-        els.main.addEventListener('keydown', (e) => {
-            if (e.key === 'Tab' && suggestions.length > 0) { e.preventDefault(); els.main.value = suggestions[0].term; render(els.main.value); }
-            if (e.key === 'ArrowDown') { e.preventDefault(); selIndex = (selIndex + 1) % suggestions.length; updateSel(); }
-            if (e.key === 'ArrowUp') { e.preventDefault(); selIndex = (selIndex - 1 + suggestions.length) % suggestions.length; updateSel(); }
-            if (e.key === 'Enter') { if (suggestions.length > 0) run(suggestions[selIndex]); else if (els.main.value) run({ term: els.main.value, type: 'history' }); }
-        });
+        function exitGame() {
+            isPlaying = false;
+            controls.unlock();
+            document.getElementById("game-layer").style.display = "none";
+            document.getElementById("lobby-layer").style.display = "block";
+        }
 
-        function updateSel() { Array.from(els.list.children).forEach((el, i) => { if (i === selIndex) { el.classList.add('selected'); el.scrollIntoView({ block: 'nearest' }); } else el.classList.remove('selected'); }); }
-
-        const notesApp = {
-            modal: document.getElementById('notesModal'),
-            title: document.getElementById('noteTitle'),
-            body: document.getElementById('noteBody'),
-            currId: null,
-            openNew: (e) => { if(e) e.stopPropagation(); notesApp.currId = null; notesApp.title.value = ""; notesApp.body.value = ""; notesApp.modal.classList.add('active'); setTimeout(() => notesApp.title.focus(), 100); },
-            openExisting: (id) => { const n = brain.notes.get(id); if(n) { notesApp.currId = id; notesApp.title.value = n.title; notesApp.body.value = n.body; notesApp.modal.classList.add('active'); } },
-            saveAndClose: () => { if(notesApp.title.value.trim() || notesApp.body.value.trim()) { if(notesApp.currId) brain.notes.update(notesApp.currId, notesApp.title.value, notesApp.body.value); else brain.notes.create(notesApp.title.value, notesApp.body.value); } notesApp.modal.classList.remove('active'); },
-            deleteCurrent: () => { if(notesApp.currId) brain.notes.delete(notesApp.currId); notesApp.modal.classList.remove('active'); }
-        };
-
-        const settingsApp = {
-            modal: document.getElementById('settingsModal'),
-            list: document.getElementById('shortcutsList'),
-            grid: document.getElementById('iconGrid'),
-            iconInput: document.getElementById('selectedIconInput'),
-            icons: ["fa-globe", "fa-star", "fa-rocket", "fa-gamepad", "fa-code", "fa-music", "fa-camera", "fa-shopping-cart", "fa-briefcase", "fa-graduation-cap", "fa-plane", "fa-envelope", "fa-hashtag", "fa-ghost", "fa-bolt", "fa-fire"],
-            open: (e) => { if(e) e.stopPropagation(); settingsApp.renderIcons(); settingsApp.renderList(); settingsApp.modal.classList.add('active'); },
-            close: () => settingsApp.modal.classList.remove('active'),
-            renderIcons: () => { settingsApp.grid.innerHTML = ''; settingsApp.iconInput.value = settingsApp.icons[0]; settingsApp.icons.forEach((icon, i) => { const d = document.createElement('div'); d.className = `icon-option ${i===0?'selected':''}`; d.innerHTML = `<i class="fas ${icon}"></i>`; d.onclick = () => { document.querySelectorAll('.icon-option').forEach(e => e.classList.remove('selected')); d.classList.add('selected'); settingsApp.iconInput.value = icon; }; settingsApp.grid.appendChild(d); }); },
-            renderList: () => { settingsApp.list.innerHTML = ''; const custom = brain.shortcuts.custom; for (const [key, val] of Object.entries(custom)) { const d = document.createElement('div'); d.className = 'flex justify-between items-center bg-black border border-neutral-800 p-2 rounded mb-2'; d.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><i class="fas ${val.icon} text-neutral-500"></i><span class="text-sm text-purple-300">${val.name}</span></div><button onclick="settingsApp.remove('${key}')" class="text-neutral-600 hover:text-red-500"><i class="fas fa-times"></i></button>`; settingsApp.list.appendChild(d); } },
-            addShortcut: () => { const n = document.getElementById('newShortName').value; const u = document.getElementById('newShortUrl').value; if(n && u) { brain.shortcuts.add(n, u, settingsApp.iconInput.value); document.getElementById('newShortName').value = ''; document.getElementById('newShortUrl').value = ''; settingsApp.renderList(); } },
-            remove: (key) => { brain.shortcuts.remove(key); settingsApp.renderList(); }
-        };
-
-        const syncApp = {
-            forceSync: async () => {
-                const u = document.getElementById('syncUser').value.trim();
-                const p = document.getElementById('syncPass').value.trim();
-                const status = document.getElementById('modalSyncStatus');
-                if(!u || !p) { status.innerText = "Enter credentials"; return; }
-                status.innerText = "Checking...";
-                localStorage.setItem(KEYS.CREDS, JSON.stringify({user: u, pass: p}));
-                const success = await Syncer.executeSmartSync(u, p, false);
-                status.innerText = success ? "Success!" : "Failed.";
-                status.className = success ? "text-green-500 text-xs text-center mt-2" : "text-red-500 text-xs text-center mt-2";
-            }
-        };
     </script>
 </body>
 </html>
