@@ -2,47 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Vortex Studio</title>
+    <title>Spotlight Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; overflow: hidden; background: #222; font-family: sans-serif; }
-        
-        #toolbar {
-            position: absolute; left: 0; top: 0; bottom: 0; width: 280px;
-            background: #1a1a1a; color: white; padding: 20px;
-            display: flex; flex-direction: column; gap: 15px; border-right: 2px solid #F4D03F;
-        }
-        
-        h2 { margin: 0; color: #F4D03F; text-transform: uppercase; }
-        input, select { padding: 10px; background: #333; border: 1px solid #555; color: white; width: 90%; }
-        button { padding: 12px; cursor: pointer; font-weight: bold; border: none; width: 100%; text-transform: uppercase; }
-        .btn-save { background: #00E5FF; }
-        .btn-back { background: transparent; border: 1px solid #555; color: #888; margin-bottom: 20px; }
-        
-        .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        .swatch { height: 40px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; }
-        .swatch.active { border-color: white; }
+        body { margin: 0; background: #111; color: white; font-family: 'Montserrat', sans-serif; overflow: hidden; }
+        #toolbar { position: absolute; left:0; top:0; bottom:0; width: 260px; background: #1a1a1a; padding: 20px; border-right: 2px solid #FFE600; display:flex; flex-direction:column; gap:15px; }
+        h2 { color: #FFE600; margin:0; }
+        input { padding: 10px; background: #333; border: 1px solid #555; color: white; width: 90%; }
+        button { padding: 12px; background: #FFE600; border: none; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+        .swatch { height: 35px; width: 35px; border-radius: 4px; display:inline-block; margin:2px; cursor:pointer; border:2px solid transparent; }
+        .swatch.active { border-color:white; }
     </style>
 </head>
 <body>
 
 <div id="toolbar">
-    <button class="btn-back" onclick="window.location.href='index.html'">Back to Lobby</button>
-    <h2>Studio</h2>
-    
-    <label>Map Name</label>
-    <input type="text" id="mName" placeholder="My Cool Map">
-    <label>Creator</label>
-    <input type="text" id="mCreator" placeholder="Your Name">
-    
+    <button style="background:transparent; border:1px solid #555; color:#888;" onclick="location.href='index.html'">EXIT</button>
+    <h2>STUDIO</h2>
+    <input id="mName" placeholder="Map Name">
+    <input id="mCreator" placeholder="Your Name">
     <label>Sky Color</label>
     <input type="color" id="mSky" value="#87CEEB">
-
-    <label>Block Color</label>
-    <div class="palette" id="palette"></div>
-    
+    <div id="pal"></div>
     <div style="margin-top:auto">
-        <p style="font-size:0.8rem; color:#aaa;">L-Click: Place | Shift: Delete</p>
-        <button class="btn-save" onclick="uploadMap()">PUBLISH MAP</button>
+        <p style="font-size:0.8rem; color:#666;">Left Click: Place<br>Shift + Click: Delete</p>
+        <button onclick="publish()">PUBLISH</button>
     </div>
 </div>
 
@@ -50,134 +34,86 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-    // === CONFIGURATION ===
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwRtQWIwlGkYowV-qD4rRn6Zz1AzZpvyGF7CyynEvDyfdXhCWGIb_E8UqoABgHLs6bN/exec";
-
-    // === 3D EDITOR ===
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x333333);
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbykgoDaT5pKCxI7FfQE59lcPYt6MAgLNioWZrlot2mxG2uZsJ8BBtVUzjW6BSrK4ueq/exec";
     
+    // Scene
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x222);
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camera.position.set(8, 8, 8);
-    
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.position.set(5,5,5);
+    const renderer = new THREE.WebGLRenderer(); renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
-    
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     
-    // Lights & Grid
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const dl = new THREE.DirectionalLight(0xffffff, 0.8);
-    dl.position.set(5,10,5);
-    scene.add(dl);
-    
-    const grid = new THREE.GridHelper(50, 50);
-    scene.add(grid);
+    const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(5,10,5); scene.add(dl);
+    scene.add(new THREE.GridHelper(50,50));
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(50,50), new THREE.MeshBasicMaterial({visible:false}));
-    plane.rotation.x = -Math.PI/2;
-    scene.add(plane);
+    plane.rotation.x = -Math.PI/2; scene.add(plane);
 
-    // Block Logic
-    const colors = [0xffffff, 0x888888, 0x111111, 0x8B4513, 0xff0000, 0xffa500, 0xffff00, 0x00ff00, 0x0000ff, 0x800080];
-    let selectedColor = colors[4];
-    const mapBlocks = {}; // key: "x,y,z", val: colorInt
-
-    // Generate Palette
-    const palDiv = document.getElementById("palette");
+    // Logic
+    let blocks = {};
+    let col = 0xff0000;
+    const colors = [0xffffff, 0x555555, 0x111111, 0x8B4513, 0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+    
+    // Palette
+    const pal = document.getElementById("pal");
     colors.forEach(c => {
         const d = document.createElement("div");
-        d.className = "swatch";
-        d.style.backgroundColor = "#"+c.toString(16).padStart(6,'0');
-        d.onclick = () => {
-            selectedColor = c;
-            document.querySelectorAll(".swatch").forEach(el => el.classList.remove("active"));
-            d.classList.add("active");
-        }
-        palDiv.appendChild(d);
+        d.className = "swatch"; d.style.background = "#"+c.toString(16).padStart(6,'0');
+        d.onclick = () => { col = c; document.querySelectorAll(".swatch").forEach(s=>s.classList.remove("active")); d.classList.add("active"); };
+        pal.appendChild(d);
     });
 
     // Interaction
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    const objects = [plane]; // Hittable objects
-    const ghost = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshBasicMaterial({color:0x00E5FF, opacity:0.5, transparent:true}));
+    const ray = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+    const objs = [plane];
+    const ghost = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshBasicMaterial({color:0x00ffff, opacity:0.5, transparent:true}));
     scene.add(ghost);
 
-    document.addEventListener('mousemove', e => {
-        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(objects);
-        if(intersects.length > 0) {
-            const i = intersects[0];
-            const p = i.point.clone().add(i.face.normal.clone().multiplyScalar(0.5)).floor().addScalar(0.5);
-            ghost.position.copy(p);
-        }
-    });
-
-    document.addEventListener('mousedown', e => {
-        if(e.target.closest("#toolbar")) return;
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(objects);
-        if(intersects.length > 0) {
-            const i = intersects[0];
-            if(e.shiftKey) {
-                // Delete
-                if(i.object !== plane) {
-                    scene.remove(i.object);
-                    objects.splice(objects.indexOf(i.object), 1);
-                    const k = `${Math.round(i.object.position.x)},${Math.round(i.object.position.y)},${Math.round(i.object.position.z)}`;
-                    delete mapBlocks[k];
-                }
-            } else {
-                // Place
-                const p = i.point.clone().add(i.face.normal.clone().multiplyScalar(0.5)).floor().addScalar(0.5);
-                const mesh = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshLambertMaterial({color: selectedColor}));
-                mesh.position.copy(p);
-                scene.add(mesh);
-                objects.push(mesh);
-                
-                const k = `${Math.round(p.x)},${Math.round(p.y)},${Math.round(p.z)}`;
-                mapBlocks[k] = selectedColor;
-            }
-        }
-    });
-
-    function uploadMap() {
-        const name = document.getElementById("mName").value;
-        const creator = document.getElementById("mCreator").value;
-        const sky = document.getElementById("mSky").value;
-        
-        if(!name || !creator) return alert("Fill in Map Name and Creator!");
-
-        // Serialize Blocks
-        const blockStr = Object.entries(mapBlocks).map(([k,v]) => `${k},${v}`).join("|");
-        
-        const payload = {
-            action: "saveMap",
-            name: name,
-            creator: creator,
-            skyColor: sky,
-            mapData: blockStr
-        };
-
-        fetch(WEB_APP_URL, {
-            method: "POST", mode: "no-cors",
-            body: JSON.stringify(payload)
-        }).then(() => alert("Map Published! Go back to lobby to play."));
-    }
-
-    // Window Resize
-    window.onresize = () => {
-        camera.aspect = window.innerWidth/window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+    document.onmousemove = e => {
+        mouse.x = (e.clientX/window.innerWidth)*2-1; mouse.y = -(e.clientY/window.innerHeight)*2+1;
+        ray.setFromCamera(mouse, camera);
+        const i = ray.intersectObjects(objs)[0];
+        if(i) ghost.position.copy(i.point).add(i.face.normal.clone().multiplyScalar(0.5)).floor().addScalar(0.5);
     };
 
-    function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
-    animate();
+    document.onmousedown = e => {
+        if(e.target.closest("#toolbar")) return;
+        ray.setFromCamera(mouse, camera);
+        const i = ray.intersectObjects(objs)[0];
+        if(i) {
+            if(e.shiftKey) {
+                if(i.object!==plane) {
+                    scene.remove(i.object); objs.splice(objs.indexOf(i.object),1);
+                    delete blocks[`${i.object.position.x},${i.object.position.y},${i.object.position.z}`];
+                }
+            } else {
+                const p = i.point.clone().add(i.face.normal.clone().multiplyScalar(0.5)).floor().addScalar(0.5);
+                const m = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshLambertMaterial({color:col}));
+                m.position.copy(p); scene.add(m); objs.push(m);
+                blocks[`${p.x},${p.y},${p.z}`] = col;
+            }
+        }
+    };
 
+    function publish() {
+        const name = document.getElementById("mName").value;
+        const creator = document.getElementById("mCreator").value;
+        if(!name) return alert("Name required");
+        
+        const bStr = Object.entries(blocks).map(([k,v]) => `${k},${v}`).join("|");
+        
+        fetch(WEB_APP_URL, {
+            method: "POST", mode: "no-cors",
+            body: JSON.stringify({
+                action: "saveMap", name: name, creator: creator, 
+                skyColor: document.getElementById("mSky").value, mapData: bStr
+            })
+        }).then(()=>alert("Published!"));
+    }
+
+    function ani(){ requestAnimationFrame(ani); renderer.render(scene, camera); }
+    ani();
 </script>
 </body>
 </html>
